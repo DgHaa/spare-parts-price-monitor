@@ -1,0 +1,58 @@
+# === 数据库与备份（含内部价格数据，不入仓） ===
+*.db
+*.db.bak*
+*.db.seed_backup*
+seed_demo.bak
+
+# === 密钥 / token ===
+.crawl_token
+output/.crawl_token
+
+# === 日志 ===
+*.log
+output/_*.log
+server.err.log
+server.log
+seed_diag.log
+seed_run.log
+_probe*.log
+t1.log
+t2.log
+t3.log
+t4.log
+
+# === 临时调试脚本 ===
+_diag.py
+_inspect.py
+_probe*.py
+
+# === 大二进制 / 第三方工具 ===
+tools/cpolar/
+cpolar.zip
+*.exe
+
+# === Python 缓存 ===
+__pycache__/
+*.pyc
+
+# === 项目级记忆（不含代码） ===
+.workbuddy/
+
+# === 大报告产物（本地留存，不入仓） ===
+output/*
+!output/poster.html
+!output/shots_poster/
+!output/shots_poster/*.png
+apple_fix_report.html
+crawler_audit_report.html
+oppo_verify_report.html
+p0_fix_report.html
+p1_p2_fix_report.html
+improvements_report.html
+备件价格平台合理性分析报告.html
+评估报告_备件价格中台.html
+
+# === 前端构建产物（防御性，当前零构建 SPA 无需 build） ===
+node_modules/
+dist/
+web/dist/

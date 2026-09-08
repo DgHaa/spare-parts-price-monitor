@@ -1,0 +1,14 @@
+{
+  "enabled": false,
+  "alert_threshold": 0.15,
+  "wechat": {
+    "webhook_url": ""
+  },
+  "email": {
+    "smtp_host": "",
+    "smtp_port": 465,
+    "smtp_user": "",
+    "smtp_pass": "",
+    "to": []
+  }
+}

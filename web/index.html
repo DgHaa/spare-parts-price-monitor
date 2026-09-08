@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>备件价格监控中台</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .crawl-ctl { display:inline-flex; gap:6px; align-items:center; }
+    .mini { height:30px; padding:0 8px; border:1px solid #ccc; border-radius:6px; background:#fff; font-size:13px; }
+    .mini:focus { outline:none; border-color:#ff9800; }
+    #crawl-token { width:96px; }
+    .btn.warn { background:#fff3e0; border-color:#ffb74d; }
+    .btn.warn:hover { background:#ffe0b2; }
+    .btn[disabled] { opacity:.5; cursor:not-allowed; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <aside class="sidebar">
+      <div class="logo">
+        <span class="logo-mark">⛬</span>
+        <div class="logo-text">
+          <strong>备件价格中台</strong>
+          <small>Spare-Parts Monitor</small>
+        </div>
+      </div>
+      <nav id="nav">
+        <a href="#overview" class="nav-item active">📊 总览</a>
+        <a href="#matrix" class="nav-item">🧮 比价矩阵</a>
+        <a href="#trend" class="nav-item">📈 价格走势</a>
+        <a href="#alerts" class="nav-item">🔔 异动告警</a>
+        <a href="#list" class="nav-item">📋 清单浏览</a>
+        <a href="#watch" class="nav-item">⭐ 我的关注</a>
+        <a href="#privacy" class="nav-item">🔒 隐私与数据</a>
+        <a href="#monitor" class="nav-item">🩺 运行监控</a>
+      </nav>
+      <div class="sidebar-foot">
+        <span id="db-quarter" class="pill">—</span>
+        <span id="db-clock" class="muted"></span>
+      </div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="view-title">总览</h1>
+          <p id="view-sub" class="muted">华为国内外友商备件价格 · 季度抓取与监控</p>
+        </div>
+        <div class="topbar-actions">
+          <button id="btn-refresh" class="btn">↻ 刷新数据</button>
+          <span class="crawl-ctl">
+            <select id="crawl-brand" class="mini" title="品牌（可空=全部）"></select>
+            <select id="crawl-country" class="mini" title="国家（可空=全部）"></select>
+            <input id="crawl-token" class="mini" type="password" placeholder="抓取 token" autocomplete="off" />
+            <button id="btn-crawl" class="btn warn" title="触发后端重新抓取（需 token）">🔄 重新抓取</button>
+          </span>
+        </div>
+      </header>
+      <section id="view" class="view"></section>
+    </main>
+  </div>
+  <div id="conn-banner" class="conn-banner" hidden>
+    <span id="conn-dot" class="conn-dot bad"></span>
+    <span class="conn-msg">后端未连接</span>
+    <a class="btn sm" href="http://localhost:8000" target="_blank" rel="noopener">在本机浏览器打开 ↗</a>
+    <button id="btn-retry-conn" class="btn sm">重试连接</button>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script src="charts.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
