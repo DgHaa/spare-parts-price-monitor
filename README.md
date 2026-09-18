@@ -104,9 +104,12 @@ python monitor.py --report     :: 仅打印健康摘要
 发现队列有 open 项时，自动**加载 spare-parts-price skill → 用 agent-browser 实查故障页 → 判断 404/选择器失效/反爬/API 参数变更 → 改 `crawler/run.py` 或 `executor.py` 或 KB 定位器 → 重跑 `--brand/--country` 验证 → 关单**。
 人工也可查看/操作队列：
 ```bat
-python queue.py list-open                         :: 看待修项
-python queue.py resolve <id> "<诊断>" "<修改>"     :: 标记已修复（Agent 修复后自动调用）
+python issue_queue.py list-open                         :: 看待修项
+python issue_queue.py resolve <id> "<诊断>" "<修改>"     :: 标记已修复（Agent 修复后自动调用）
 ```
+> 该脚本原名 `queue.py`，2026-09-17 更名为 `issue_queue.py`：项目根在 sys.path 上，
+> 叫 `queue.py` 会遮蔽标准库 `queue`，使 `concurrent.futures` / `asyncio.to_thread`
+> 全部报 `module 'queue' has no attribute 'SimpleQueue'`。**请勿再用 queue.py 作文件名。**
 > 注意：自愈 Agent 需要 WorkBuddy 在运行时才会执行；它只在队列非空时才改代码，队列空时什么都不做。
 
 ### 6.1 修复后刷新前端

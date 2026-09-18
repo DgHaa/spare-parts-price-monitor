@@ -13,6 +13,10 @@
   const API = (_params.get("api") && _params.get("api").trim())
     || (_isFile ? "http://localhost:" + _cfgPort : "");
   const $ = (s, el = document) => el.querySelector(s);
+  // 产品品类（models.category）。2026-09-18 起库里收全品类，但跨品类比价无意义，
+  // 故比价矩阵默认只看手机、并允许切换品类。
+  const MODEL_CATS = [["phone", "手机"], ["tablet", "平板"], ["watch", "手表"],
+                      ["earbuds", "耳机"], ["wearable", "手环/戒指"], ["other", "其他"]];
   const view = $("#view");
   const state = { overview: null, brands: [], quarters: [], health: [], anomalies: [], models: [], fx: null, mcData: null };
 
@@ -375,8 +379,15 @@
           (d.colors || []).map(s => `<button class="chip ${_mColor === s ? "on" : ""}" data-c="${esc(s)}">${esc(s)}</button>`).join("");
         colorBox.querySelectorAll(".chip").forEach(ch => ch.onclick = () => { _mColor = ch.dataset.c; draw(); });
       } else colorBox.innerHTML = '<span class="muted">该机型无多颜色</span>';
-      // 组装：分组多表 + 到手估算 + 第三方对比 + 降价预警
-      let html = modelCompareHTML(d);
+      // 定价结构（档位定价说明）：独立拉取，失败不影响主矩阵
+      let pb = null;
+      try {
+        pb = await api("/api/price_bands?brand=" + encodeURIComponent(bSel.value) +
+          "&model=" + encodeURIComponent(mSel.value) + "&quarter=" + encodeURIComponent(qSel.value));
+      } catch (e) { pb = null; }
+      // 组装：分组多表 + 定价结构 + 到手估算 + 第三方对比 + 降价预警
+      let html = modelCompareHTML(d, pb);
+      if (pb) html += priceBandsHTML(pb);
       html += estimatorHTML(d);
       html += '<details class="aux" id="mc-tp"><summary>🔧 第三方兼容件参考价对比（官方价是否合理？）</summary>' +
         '<div id="mc-tp-body" class="aux-body">展开后加载…</div></details>';
@@ -389,9 +400,60 @@
     await draw();
   }
 
-  function modelCompareHTML(d) {
+  /** 定价结构：说明「某国的这个价格实际涵盖哪些备件」。
+   * 背景：德国等市场把多个不同备件定在同一价位（档位定价 / groupCode=PHONE_OTHER），
+   * 若把该价格挂在单一备件名下，会被误读为"这个零件的成本价"，
+   * 进而得出"德国卡托比中国贵 50 倍"这种数学正确、归因错误的结论。 */
+  function priceBandsHTML(pb) {
+    pb = pb || {};
+    const cs = (pb.countries || []).filter(c => (c.bands || []).length);
+    if (!cs.length) return "";
+    let h = '<details class="aux" open><summary>💡 定价结构提示：这些价格实际「涵盖」哪些备件</summary><div class="aux-body">';
+    h += '<div class="hint">某些市场（尤其德国）把多个<b>不同备件</b>定在同一价位，'
+      + '属 <b>档位定价</b>而非零件成本定价。此时把该价格挂在单一备件名下，会被误读为'
+      + '「这个零件的成本」，跨市场比价结论随之失真。<br>'
+      + '判据：同一机型内 ≥' + (pb.min_parts || 5) + ' 个不同备件的价格落在 '
+      + Math.round((pb.tol || 0.15) * 100) + '% 容差内。</div>';
+    cs.forEach(c => {
+      const rng = c.range_ratio == null ? "" : ('；该机型价格动态范围仅 <b>' + c.range_ratio + '×</b>');
+      h += '<div style="margin:12px 0 4px"><b>' + esc(cn(c.country)) + '</b>'
+        + '<span class="muted">（共 ' + (c.n_parts || 0) + ' 个备件' + rng + '）</span></div>';
+      (c.bands || []).forEach(b => {
+        h += '<div style="margin:2px 0 2px 10px">▸ <b>' + fmt(b.lo, 2) + '–' + fmt(b.hi, 2) + ' '
+          + esc(c.currency || '') + '</b> 档，涵盖 <b>' + b.size + '</b> 个不同备件'
+          + '（占该机型 ' + Math.round((b.share || 0) * 100) + '%）：<br>'
+          + '<span style="margin-left:14px">'
+          + (b.members || []).map(m => esc(m.name)
+              + (m.spec ? ' <span class="muted">' + esc(m.spec) + '</span>' : '')
+              + '<span class="muted"> ' + fmt(m.price, 2) + '</span>').join('、')
+          + '</span></div>';
+      });
+    });
+    h += '<div class="hint">→ 解读建议：以上备件的价格是<b>档位价</b>，不能直接与他国零件价横向比较'
+      + '（例如"德国卡托比中国贵 50 倍"属数学正确、归因错误的结论）。</div>';
+    h += '</div></details>';
+    return h;
+  }
+
+  function modelCompareHTML(d, pb) {
     d = d || {};
     const groups = d.groups || [];
+    // 档位定价索引：{国家: {"件名|规格": {label, tip}}}，用于在单元格上直标"这是档位价"，
+    // 不必让用户滚到下方面板才发现。详见 priceBandsHTML 的说明。
+    const bandIdx = {};
+    ((pb || {}).countries || []).forEach(c => {
+      const m = bandIdx[c.country] = {};
+      (c.bands || []).forEach(b => {
+        const label = fmt(b.lo, 2) + "–" + fmt(b.hi, 2) + " " + (c.currency || "") + "档";
+        (b.members || []).forEach(mem => {
+          m[mem.name + "|" + (mem.spec || "")] = {
+            tip: "该价格属「" + label + "」档位定价，同档涵盖 " + b.size + " 个不同备件（占该机型 "
+              + Math.round((b.share || 0) * 100) + "%）：" + (b.members || []).map(x => x.name).join("、")
+              + "。这是档位价，不是该零件单独的成本价，不宜与他国零件价直接横比。",
+          };
+        });
+      });
+    });
     if (!groups.length) {
       const meta = d.model_meta || null;
       let loc = null;
@@ -477,9 +539,12 @@
             ? ' <sup class="nosplit" title="' + esc(pc.labor_note || "官方仅提供总价，未拆分物料/人工费") + '">※</sup>' : "";
           const seedBadge = (pc.is_seed === 1)
             ? ' <sup class="seed" title="演示/种子数据，非真实官网取证">seed</sup>' : "";
+          // 档位定价标记：该国此价属"多个不同备件同价"的档位，非该零件单独成本价
+          const _bi = bandIdx[c] && bandIdx[c][p.part + "|" + (p.spec || "")];
+          const bandMark = _bi ? ` <sup class="band" title="${esc(_bi.tip)}">⚖档</sup>` : "";
           // 单元格可点击下钻：展示本平台实际抓取到的该机型+国家+规格明细（准确，不依赖外部误导页）
           const oc = `onclick="openCompareDetail('${escAttr(c)}','${escAttr(specLabel)}','${escAttr(colorLabel)}','${escAttr(editionLabel)}')"`;
-          html += `<td class="cell-click" style="background:${heatColor(t)}" title="${esc(tip)}" ${oc}>${fmt(v)}<br><small class="muted">${esc(cur)}${src}${nosplit}${seedBadge}</small>${laborBadge}</td>`;
+          html += `<td class="cell-click" style="background:${heatColor(t)}" title="${esc(tip)}" ${oc}>${fmt(v)}<br><small class="muted">${esc(cur)}${src}${nosplit}${seedBadge}</small>${laborBadge}${bandMark}</td>`;
         });
         const diff = lo ? Math.round((hi - lo) / lo * 100) : 0;
         html += `<td>${esc(loC)}</td><td>${esc(hiC)}</td><td>${diff > 0 ? "+" + diff + "%" : "—"}</td></tr>`;
@@ -685,57 +750,74 @@
       '<div class="field"><label>国家（可选）</label><select id="tm-c"><option value="">全部国家合并</option>' +
       cl.map(c => `<option value="${esc(c.code)}">${esc(c.name)}</option>`).join("") + '</select></div>' +
       '<div class="field"><label>季度</label><select id="tm-q">' + (state.quarters || []).map(x => `<option ${x === q ? "selected" : ""}>${x}</option>`).join("") + '</select></div>' +
-      '</div><div class="hint">仅同档位机型参与均值（旗舰比旗舰、入门比入门），同一机型多个规格/颜色按"参考配置"取代表价，避免混算导致比价失真。</div>' +
+      '<div class="field"><label>品类</label><select id="tm-cat">' +
+      MODEL_CATS.map(([v, label]) => `<option value="${v}"${v === "phone" ? " selected" : ""}>${label}</option>`).join("") +
+      '</select></div>' +
+      '</div><div class="hint">仅同档位机型参与均值（旗舰比旗舰、入门比入门），同一机型多个规格/颜色按"参考配置"取代表价，避免混算导致比价失真。' +
+      '<b>品类必须分开看</b>：平板的「屏幕」和手机的「屏幕」不是同一个东西，混算出的均价两头不靠（如三星电池：手机 ¥522 vs 平板 ¥691，差 32%）。</div>' +
       '<div id="tm-result"></div>';
-    const tierSel = $("#tm-tier"), cSel = $("#tm-c"), qSel = $("#tm-q");
+    const tierSel = $("#tm-tier"), cSel = $("#tm-c"), qSel = $("#tm-q"), catSel = $("#tm-cat");
     const draw = async () => {
       const d = await api("/api/tier_matrix?tier=" + encodeURIComponent(tierSel.value) +
-        "&country=" + encodeURIComponent(cSel.value) + "&quarter=" + encodeURIComponent(qSel.value));
+        "&country=" + encodeURIComponent(cSel.value) + "&quarter=" + encodeURIComponent(qSel.value) +
+        "&category=" + encodeURIComponent(catSel.value));
       $("#tm-result").innerHTML = tierMatrixHTML(d);
     };
-    tierSel.onchange = cSel.onchange = qSel.onchange = draw;
+    tierSel.onchange = cSel.onchange = qSel.onchange = catSel.onchange = draw;
     await draw();
   }
 
   function tierMatrixHTML(d) {
     d = d || {};
-    if (!(d.cats || []).length) return '<div class="panel"><div class="empty">该档位在所选季度暂无价格数据</div></div>';
-    // 全局颜色范围
-    let gmin = Infinity, gmax = -Infinity;
-    for (const cat in (d.cells || {})) for (const b in (d.cells[cat] || {})) {
-      const v = d.cells[cat][b]; if (v != null) { gmin = Math.min(gmin, v); gmax = Math.max(gmax, v); }
-    }
-    if (!isFinite(gmin)) { gmin = 0; gmax = 1; }
+    const rows = d.rows || [];
+    const brands = d.brands || [];
+    if (!rows.length) return '<div class="panel"><div class="empty">该档位在所选季度暂无可比备件</div></div>';
     const note = d.country ? "（" + d.country + "）" : "（全部国家合并）";
     let html = '<div class="panel"><div class="section-title">🧮 同档位·跨品牌对标 — ' +
       esc(d.tier || "") + note + '（' + (d.quarter || "") + ' · 单元格=该品牌同档位 CNY 均价）</div>';
     html += '<div class="hint warn">仅同档位机型参与均值；<b>库内已无 seed 占位数据</b>，仅用真实抓取均价。';
+    html += '<b>按「规范件名(+规格)」分组</b>——镜头、镜片、镜头盖属不同备件，不并入同一均值；';
+    html += (d.country
+      ? '已限定单国，展示该国有数据的全部备件。'
+      : '仅展示 <b>≥2 个品牌都有数据</b>的备件（这是"跨品牌可比"的前提）。');
+    html += '<br><b>口径提示</b>：Apple 官网只公布「服务价」（含人工的整体维修报价），'
+      + '与安卓品牌的「零件价」口径不同，故其备件（屏幕损坏/电池维修服务等）'
+      + '多数无法按件名与其他品牌匹配，<b>不会强行并入同一行</b>——跨品牌解读时需注意此差异。';
     if (state.fx && state.fx.rates && state.fx.rates.length)
       html += '<span class="muted"> 折算汇率：' +
         (state.fx.rates.find(r => r.currency === "USD") ? "USD→CNY " + fmt(state.fx.rates.find(r => r.currency === "USD").rate_to_cny, 4) : "") +
         ' · 来源 ' + esc(state.fx.rates[0].rate_source || "—") + (state.fx.rates[0].rate_as_of ? " @ " + esc(state.fx.rates[0].rate_as_of) : "") + '</span>';
     html += '</div>';
-    html += '<div class="scroll"><table class="heat"><thead><tr><th class="rowlabel">规范品类</th>';
-    (d.brands || []).forEach(b => {
+    html += '<div class="scroll"><table class="heat"><thead><tr><th class="rowlabel">规范件名</th>';
+    brands.forEach(b => {
       const n = ((d.models_per_brand || {})[b]) || 0;
       html += `<th>${esc(b)}<br><small class="muted">${n} 机型</small></th>`;
     });
     html += '</tr></thead><tbody>';
     (d.cats || []).forEach(cat => {
-      html += `<tr><td class="rowlabel">${esc(cat)}</td>`;
-      (d.brands || []).forEach(b => {
-        const v = (d.cells[cat] || {})[b];
-        if (v == null) { html += '<td class="muted">—</td>'; return; }
-        const t = (v - gmin) / (gmax - gmin || 1);
-        html += `<td style="background:${heatColor(t)}">${fmt(v)}</td>`;
+      const group = rows.filter(r => r.cat === cat);
+      if (!group.length) return;
+      html += `<tr class="catrow"><td colspan="${brands.length + 1}">${esc(cat)}</td></tr>`;
+      group.forEach(r => {
+        const cells = r.cells || {};
+        // 按「行内」着色：同一备件横向比，最贵=红、最便宜=绿
+        const vals = brands.map(b => cells[b]).filter(v => v != null);
+        const rmin = Math.min.apply(null, vals), rmax = Math.max.apply(null, vals);
+        html += `<tr><td class="rowlabel">${esc(r.label)}</td>`;
+        brands.forEach(b => {
+          const v = cells[b];
+          if (v == null) { html += '<td class="muted">—</td>'; return; }
+          const t = (v - rmin) / ((rmax - rmin) || 1);
+          html += `<td style="background:${heatColor(t)}">${fmt(v)}</td>`;
+        });
+        html += "</tr>";
       });
-      html += "</tr>";
     });
     html += '</tbody></table></div>';
-    html += '<div class="legend"><span><i style="background:#dcfce7"></i>较低</span>' +
+    html += '<div class="legend"><span><i style="background:#dcfce7"></i>该备件最低</span>' +
       '<span><i style="background:#fef3c7"></i>中等</span>' +
-      '<span><i style="background:#fee2e2"></i>较高</span>' +
-      '<span class="muted">红=该档位内该备件最贵品牌；已排除不同价位机型/规格/颜色干扰</span></div></div>';
+      '<span><i style="background:#fee2e2"></i>该备件最高</span>' +
+      '<span class="muted">底色按「同一备件」横向比（每个备件行独立着色）；已排除不同价位机型/规格/颜色干扰</span></div></div>';
     return html;
   }
   function heatColor(t) {
@@ -751,7 +833,7 @@
     let html = '<div class="filters">' +
       '<div class="field"><label>品牌</label><select id="t-b">' + brands.map(b => `<option>${esc(b)}</option>`).join("") + '</select></div>' +
       '<div class="field"><label>机型</label><select id="t-m"></select></div>' +
-      '<div class="field"><label>备件品类</label><select id="t-p"></select></div>' +
+      '<div class="field"><label>备件</label><select id="t-p"></select></div>' +
       '<div class="field"><label>币种</label><span class="tag">CNY 跨国家对比</span></div></div>';
     html += '<div class="panel"><div class="section-title">📈 价格走势（按季度 · 同备件跨国家）</div>';
     html += '<div class="chart-wrap"><canvas id="trend-canvas"></canvas></div>';
@@ -768,15 +850,17 @@
     async function fillParts() {
       const b = brandSel.value, m = modelSel.value;
       const ps = await api("/api/parts?brand=" + encodeURIComponent(b) + "&model=" + encodeURIComponent(m));
-      const cats = [...new Set(ps.map(p => canon(p.part)))].sort();
+      // 优先用后端归一化名（备件级口径，与比价矩阵一致）；
+      // 旧后端没有该字段时回退到本地 canon()，保证兼容。
+      const cats = [...new Set(ps.map(p => p.canonical || canon(p.part)))].sort();
       partSel.innerHTML = cats.map(c => `<option>${esc(c)}</option>`).join("");
       draw();
     }
     async function draw() {
       const b = brandSel.value, m = modelSel.value, p = partSel.value;
-      // 取该机型全部快照（跨国家/季度/部件），前端按规范品类分组，避免原始部件名不匹配
+      // 取该机型全部快照（跨国家/季度/部件），按归一化备件名分组
       const all = await api("/api/part_series?brand=" + encodeURIComponent(b) + "&model=" + encodeURIComponent(m));
-      const series = all.filter(r => canon(r.part) === p);
+      const series = all.filter(r => (r.canonical || canon(r.part)) === p);
       // 按国家分组时间序列
       const byC = {};
       series.forEach(r => { (byC[r.country] = byC[r.country] || {})[r.quarter] = r.cny_price; });

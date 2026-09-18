@@ -19,6 +19,14 @@ sys.path.insert(0, str(ROOT))
 import db as D  # noqa: E402
 from crawler.model_links import norm, match_official_name  # noqa: E402
 
+# 金额解析统一走 skill 的 normalize.parse_amount（唯一实现）：
+# 各国 `.`/`,` 含义相反，本地再写 `replace(",","")` 会把德语/土语小数逗号当千分位，
+# 经本工具写回的价会污染生产库。
+SKILL_SCRIPTS = Path(r"C:/Users/Dong/.workbuddy/skills/spare-parts-price/scripts")
+if str(SKILL_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SKILL_SCRIPTS))
+from normalize import parse_amount as _parse_amount  # noqa: E402
+
 MI_CLASS_LIST = "https://api2.service.order.mi.com/repair_price/shop_class_info?keyword=&callback=CALLBACK"
 MI_PRICE = "https://api2.service.order.mi.com/repair_price/shop_band_wx_price?class_id={cid}&callback=cb"
 HTTP_TIMEOUT = 12
@@ -82,10 +90,13 @@ def vivo_api(mid, cc):
                 raw = p.get("price")
                 if raw is None:
                     continue
-                m = re.search(r"-?\d[\d,]*\.?\d*", str(raw))   # 价格可能带币种后缀，如 "1390TRY"
+                m = re.search(r"-?\d[\d.,]*\.?\d*", str(raw))   # 价格可能带币种后缀，如 "1390TRY"
                 if not m:
                     continue
-                out.append((p.get("name"), float(m.group(0).replace(",", ""))))
+                val = _parse_amount(m.group(0))
+                if val is None:
+                    continue
+                out.append((p.get("name"), val))
             return out, f"{len(lst)} parts"
         elif r["status"] == 429:
             time.sleep(5); continue

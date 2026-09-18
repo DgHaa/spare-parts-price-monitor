@@ -56,3 +56,7 @@ improvements_report.html
 node_modules/
 dist/
 web/dist/
+
+# === 根目录临时抓页 dump（vivo 接口调研残留，不入仓）===
+/vivo_*.html
+/vivo_*.js

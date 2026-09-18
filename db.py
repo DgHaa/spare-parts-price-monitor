@@ -42,6 +42,8 @@ CREATE TABLE IF NOT EXISTS models (
   model_key TEXT,
   source_url TEXT,
   discovered_at TEXT,
+  category TEXT DEFAULT 'phone',  -- 产品品类：phone/tablet/watch/earbuds/wearable/other
+                                  -- ⚠️ 跨品类比价无意义（平板屏幕 ≠ 手机屏幕），比价矩阵必须按品类分组
   tier TEXT,               -- 产品档位：旗舰/高端/中端/入门（公平跨品牌比价的关键维度）
   base_model TEXT,         -- 归一化基础机型(去规格/颜色)，跨规格聚合比价键
   spec TEXT,               -- 规格/SKU(如 8GB+256GB)，同基础机型不同规格备件价可能不同
@@ -60,7 +62,24 @@ CREATE TABLE IF NOT EXISTS parts (
   model_id INTEGER,
   name TEXT,
   part_type TEXT,
+  canonical_name TEXT,
+  canonical_type TEXT,
+  canonical_spec TEXT,
+  variant TEXT,
+  lang TEXT,
+  norm_rule TEXT,
+  norm_conf INTEGER,
+  norm_version TEXT,
   UNIQUE(model_id, name)
+);
+CREATE TABLE IF NOT EXISTS part_alias (
+  part_type      TEXT NOT NULL,
+  alias_key      TEXT NOT NULL,
+  canonical_name TEXT NOT NULL,
+  canonical_type TEXT,
+  lang           TEXT,
+  source         TEXT,
+  PRIMARY KEY (part_type, alias_key)
 );
 CREATE TABLE IF NOT EXISTS price_snapshots (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -136,15 +155,26 @@ STATIC_RATES = {
 }
 
 
+_WAL_ENSURED = False  # 进程级标记：journal_mode=WAL 是**库文件属性**，每进程设一次即可
+
+
 def get_conn():
+    global _WAL_ENSURED
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
     # 并发容错：抓取进程与 API 服务同时访问同一库时，等待而非直接报 "database is locked"
     conn.execute("PRAGMA busy_timeout=15000")
-    try:
-        conn.execute("PRAGMA journal_mode=WAL")  # 读写并发，减少锁竞争
-    except Exception:
-        pass
+    # journal_mode=WAL 持久化在数据库文件头里，一旦设置，后续连接自动继承。
+    # 但**每建一次连接就执行一次该 PRAGMA 实测要 116ms**（对比裸 sqlite3.connect 仅 1.9ms，
+    # busy_timeout 仅 1.4ms）——因为它要走一次"设置日志模式"的排他流程。
+    # 平台里 get_conn 被调用成千上万次（每条价格快照一次），fetch_rates 写 166 个币种
+    # 就白花 19s，故改为每进程只设一次（2026-09-17 优化，详见报告 §16.3）。
+    if not _WAL_ENSURED:
+        try:
+            conn.execute("PRAGMA journal_mode=WAL")  # 读写并发，减少锁竞争
+            _WAL_ENSURED = True
+        except Exception:
+            pass
     return conn
 
 
@@ -165,6 +195,11 @@ def init_db():
     conn = get_conn()
     conn.executescript(SCHEMA)
     # 兼容旧库：tier / base_model / spec / color / edition 列在后续版本才加入
+    # category（品类）用于跨品类分组比价：全品类口径下必须与 tier 一样参与分组
+    try:
+        conn.execute("ALTER TABLE models ADD COLUMN category TEXT DEFAULT 'phone'")
+    except Exception:
+        pass
     for col in ("tier", "base_model", "spec", "color", "edition"):
         try:
             conn.execute(f"ALTER TABLE models ADD COLUMN {col} TEXT")
@@ -178,6 +213,19 @@ def init_db():
             conn.execute(f"ALTER TABLE models ADD COLUMN {col} {typ}")
         except Exception:
             pass
+    # 备件名归一化字段（方案 A）：原文 name/part_type 保留不动，归一化结果另存新列
+    for col, typ in (("canonical_name", "TEXT"), ("canonical_type", "TEXT"),
+                     ("canonical_spec", "TEXT"), ("variant", "TEXT"), ("lang", "TEXT"),
+                     ("norm_rule", "TEXT"), ("norm_conf", "INTEGER"), ("norm_version", "TEXT")):
+        try:
+            conn.execute(f"ALTER TABLE parts ADD COLUMN {col} {typ}")
+        except Exception:
+            pass
+    try:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_parts_canon "
+                     "ON parts(canonical_type, canonical_name, canonical_spec)")
+    except Exception:
+        pass
     try:
         conn.execute("ALTER TABLE price_snapshots ADD COLUMN source_url_kind TEXT")
     except Exception:
@@ -334,6 +382,29 @@ def normalize_base_model(name):
     return s or (name or "").strip()
 
 
+# ---- 产品品类（区别于"备件品类"）：phone / tablet / watch / earbuds / wearable / other ----
+# 口径：**官方备件价表里出现的品类全收**（平板/手表/耳机/手环/戒指都要），
+# 但跨品类比价无意义（"平板屏幕" ≠ "手机屏幕"），所以比价矩阵必须按 category 分组。
+# 顺序敏感：tablet/watch 先判，避免 Galaxy Watch 被 \bTab\b 之类规则误伤。
+# ⚠️ 不能写 \bWatch\b：Galaxy Watch4 的 h 与 4 都是词字符、中间无单词边界，会漏网。
+_CATEGORY_RULES = [
+    (re.compile(r"iPad|\bPad\b|\bTab\b|平板", re.I), "tablet"),
+    (re.compile(r"Watch\d*|WATCH\d*|手表", re.I), "watch"),
+    (re.compile(r"\bBuds\b|Earbuds|AirPods|\bEnco\b|\bTWS\b|耳机", re.I), "earbuds"),
+    (re.compile(r"\bRing\b|\bFit\d*\b|\bBand\b|手环|穿戴", re.I), "wearable"),
+    (re.compile(r"\bTV\b|电视|笔记本|\bMac\b|空调|冰箱|洗衣机", re.I), "other"),
+]
+
+
+def guess_category(name):
+    """按机型名推断产品品类。抓链若能从源头确定品类应显式传，此函数只作兜底/回填。"""
+    s = name or ""
+    for pat, cat in _CATEGORY_RULES:
+        if pat.search(s):
+            return cat
+    return "phone"
+
+
 
 # 人工品类映射表（P1-3）：把抓取得到的本地化/品牌特定备件名映射到规范品类，
 # 目标是把 normalize_category 落"其他"的比例从 ~30% 压到 <10%。
@@ -426,13 +497,18 @@ def upsert_country(code, name="", currency="", locale="", conn=None):
 def upsert_model(brand_id, country_code, name, model_key=None, source_url="", tier=None,
                 base_model=None, spec=None, color=None, edition=None, conn=None,
                 model_url=None, model_url_kind=None, model_url_locator=None,
-                model_url_verified=None, model_url_checked_at=None, model_page_url=None):
+                model_url_verified=None, model_url_checked_at=None, model_page_url=None,
+                category=None):
     """写入/更新机型。
 
     机型级取证链接（model_url*）为可选参数：传 None 时保留库内既有值（COALESCE），
     因此抓取链路可以先落价格、再由校验器单独回填/更新链接，互不覆盖。
+
+    category（品类）同理：抓取链路若能从源头确定品类就显式传，传 None 时保留库内既有值。
     """
     model_key = model_key or name
+    if category is None:
+        category = guess_category(name)
     if base_model is None:
         base_model = normalize_base_model(name)
     if spec is None:
@@ -446,14 +522,15 @@ def upsert_model(brand_id, country_code, name, model_key=None, source_url="", ti
     own = conn is None
     c = conn or get_conn()
     c.execute("""INSERT INTO models(brand_id, country_code, name, model_key, source_url, discovered_at,
-                    tier, base_model, spec, color, edition,
+                    category, tier, base_model, spec, color, edition,
                     model_url, model_url_kind, model_url_locator, model_url_verified,
                     model_url_checked_at, model_page_url)
-                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(brand_id, country_code, model_key)
                    DO UPDATE SET tier=excluded.tier, source_url=excluded.source_url,
                                  base_model=excluded.base_model, spec=excluded.spec,
                                  color=excluded.color, edition=excluded.edition,
+                                 category=COALESCE(excluded.category, models.category),
                                  model_url=COALESCE(excluded.model_url, models.model_url),
                                  model_url_kind=COALESCE(excluded.model_url_kind, models.model_url_kind),
                                  model_url_locator=COALESCE(excluded.model_url_locator, models.model_url_locator),
@@ -461,7 +538,8 @@ def upsert_model(brand_id, country_code, name, model_key=None, source_url="", ti
                                  model_url_checked_at=COALESCE(excluded.model_url_checked_at, models.model_url_checked_at),
                                  model_page_url=COALESCE(excluded.model_page_url, models.model_page_url)""",
                  (brand_id, country_code, name, model_key, source_url,
-                  datetime.now().isoformat(timespec="seconds"), tier, base_model, spec, color, edition,
+                  datetime.now().isoformat(timespec="seconds"), category, tier, base_model, spec, color,
+                  edition,
                   model_url, model_url_kind, model_url_locator, model_url_verified,
                   model_url_checked_at, model_page_url))
     row = c.execute("SELECT id FROM models WHERE brand_id=? AND country_code=? AND model_key=?",
@@ -472,12 +550,31 @@ def upsert_model(brand_id, country_code, name, model_key=None, source_url="", ti
 
 
 def upsert_part(model_id, name, part_type=None, conn=None):
+    """写入/更新备件。name/part_type 保留官网原文；canonical_* 为归一化结果（方案 A）。
+
+    归一化在此统一完成，因此 run.py / samsung_api.py / seed_demo.py / refetch_failing.py
+    等所有写入路径自动生效，无需各自处理。
+    """
     part_type = part_type or normalize_category(name)
+    try:
+        from crawler import part_norm as _pn
+        nr = _pn.normalize(name or "", part_type)
+        canon = (nr.canonical, nr.canonical_type or part_type or "", nr.spec,
+                 nr.variant, nr.lang, nr.rule, nr.conf, "part_alias.json@v" + _pn.alias_version())
+    except Exception:
+        canon = (name or "", part_type or "", "", "", "", "fallback", 0, None)
     own = conn is None
     c = conn or get_conn()
-    c.execute("INSERT INTO parts(model_id, name, part_type) VALUES(?,?,?) "
-              "ON CONFLICT(model_id, name) DO UPDATE SET part_type=excluded.part_type",
-              (model_id, name, part_type))
+    c.execute(
+        "INSERT INTO parts(model_id, name, part_type, canonical_name, canonical_type,"
+        " canonical_spec, variant, lang, norm_rule, norm_conf, norm_version)"
+        " VALUES(?,?,?,?,?,?,?,?,?,?,?) "
+        "ON CONFLICT(model_id, name) DO UPDATE SET part_type=excluded.part_type,"
+        " canonical_name=excluded.canonical_name, canonical_type=excluded.canonical_type,"
+        " canonical_spec=excluded.canonical_spec, variant=excluded.variant, lang=excluded.lang,"
+        " norm_rule=excluded.norm_rule, norm_conf=excluded.norm_conf,"
+        " norm_version=excluded.norm_version",
+        (model_id, name, part_type) + canon)
     row = c.execute("SELECT id FROM parts WHERE model_id=? AND name=?", (model_id, name)).fetchone()
     if own:
         c.commit(); c.close()
@@ -494,6 +591,26 @@ def model_already_captured(brand_id, country_code, model_key, quarter):
         (brand_id, country_code, model_key, quarter)).fetchone()
     conn.close()
     return row is not None
+
+
+def captured_model_keys(brand_id, country_code, quarter):
+    """本季已抓到价的机型集合（model_key），供抓取前**批量跳过**用。
+
+    与 model_already_captured 的区别：那个是一台一次查询，OPPO 全量 275 台会打 275 次；
+    这里是单次查询返回集合，让 crawl 流程能在**发请求之前**就过滤掉已抓机型——
+    断点续跑原本只跳过"写库"，仍会对每台已抓机型重复 POST 取价（275 台约 5 分钟白跑）。
+    注意：官方无备件价（partPriceList 为空）的机型不入库，故不在本集合内，
+    重跑时仍会再取一次（属预期，宁多一次请求也不误判为"已抓"）。
+    """
+    conn = get_conn()
+    rows = conn.execute(
+        """SELECT DISTINCT m.model_key FROM price_snapshots ps
+           JOIN parts p ON p.id=ps.part_id
+           JOIN models m ON m.id=p.model_id
+           WHERE m.brand_id=? AND m.country_code=? AND ps.quarter=?""",
+        (brand_id, country_code, quarter)).fetchall()
+    conn.close()
+    return {r["model_key"] for r in rows if r["model_key"]}
 
 
 def insert_snapshot(part_id, quarter, price, currency, cny_price,
@@ -612,8 +729,22 @@ def fetch_rates(quarter):
     # 合并静态兜底（实时未覆盖的币种）
     for cur, rt in STATIC_RATES.items():
         live.setdefault(cur, rt)
-    for cur, rt in live.items():
-        set_rate(quarter, cur, rt, source=src, as_of=as_of)
+    # 批量落库：旧实现对每个币种各调一次 set_rate（各建一次连接 + 各跑一次
+    # PRAGMA journal_mode=WAL ≈116ms），166 个币种就要 ~19s；这里单连接单事务
+    # executemany 一次写完（实测 <0.1s）。落库失败不阻断抓取——get_rate 会回退静态汇率。
+    try:
+        conn = get_conn()
+        conn.executemany(
+            """INSERT INTO exchange_rates(quarter, currency, rate_to_cny, rate_source, rate_as_of)
+               VALUES(?,?,?,?,?)
+               ON CONFLICT(quarter, currency) DO UPDATE SET
+                 rate_to_cny=excluded.rate_to_cny,
+                 rate_source=excluded.rate_source, rate_as_of=excluded.rate_as_of""",
+            [(quarter, cur, rt, src, as_of) for cur, rt in live.items()])
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        sys.stderr.write(f"[warn] 汇率落库失败（不影响抓取，get_rate 回退 STATIC_RATES）: {e}\n")
     return live
 
 

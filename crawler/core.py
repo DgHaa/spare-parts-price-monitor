@@ -60,11 +60,23 @@ def _windows_system_proxy():
     return server
 
 
-async def launch_browser():
-    """启动无头 Chromium（代理感知）。返回 (playwright, browser)。"""
+async def launch_browser(force_direct=False):
+    """启动无头 Chromium（代理感知）。返回 (playwright, browser)。
+
+    force_direct=True：强制不走代理直连。用于官网按出口 IP 返回不同数据/需直连的站点，
+    KB 里以 query.api.bypass_proxy=true 声明，由 crawl_brand_country 单独起直连浏览器。
+
+    注意（重要更正）：曾一度认为 OPPO 中国(sow-cms.oppo.com)「经代理取到 950/9、
+    直连取到 850/11」，据此给 cn 配了 bypass_proxy。2026-09-17 复测证明该结论错误：
+    850/11 与 950/9 是两台不同机型（OPPO Pad 5 vs OPPO Pad 5 柔光版）的官方真实价，
+    代理与直连返回完全一致，差异源自机型名子串匹配错位，与出口 IP 无关。故 cn 已改
+    bypass_proxy=false。此参数仍保留，供确有按 IP 分流行为的站点使用。
+    """
     from playwright.async_api import async_playwright
-    proxy = get_proxy()
-    if proxy:
+    proxy = None if force_direct else get_proxy()
+    if force_direct:
+        print("[proxy] 该站点要求直连（bypass_proxy），忽略代理设置", flush=True)
+    elif proxy:
         print(f"[proxy] 使用出口代理: {proxy['server']}", flush=True)
     else:
         print("[proxy] 未检测到代理，直连（Google 等国可能 http=000）", flush=True)
