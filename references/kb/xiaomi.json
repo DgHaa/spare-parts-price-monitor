@@ -1,0 +1,111 @@
+{
+  "brand": "xiaomi",
+  "countries": {
+    "cn": [
+      {
+        "device_category": "phone",
+        "locale": "zh-CN",
+        "currency": "CNY",
+        "entry": {
+          "url": "https://www.mi.com/service/materialprice",
+          "steps": [],
+          "expect_url": "https://www.mi.com/service/materialprice"
+        },
+        "query": {
+          "mode": "xiaomi_api",
+          "categories": [
+            "小米手机",
+            "Redmi手机",
+            "智能穿戴及耳机",
+            "电脑办公"
+          ],
+          "pre_wait_ms": 12000,
+          "api": {
+            "service_api": "https://api2.service.order.mi.com",
+            "fetch_mode": "http",
+            "concurrency": 8,
+            "class_tree": "/repair_price/shop_class_info?keyword=&callback=cb",
+            "class_price": "/repair_price/shop_band_wx_price?class_id={class_id}&callback=cb",
+            "field_map": {
+              "part": "materials[].shop_material_class_name",
+              "material_price": "materials[].sale_price",
+              "labor_price": "materials[].handwork_cost",
+              "note": "总价 = 保外物料指导价 + 保外人工指导价；out_warranty_price 恒为 0，不是物料价，勿用"
+            }
+          },
+          "series_filter": {
+            "电脑办公": [
+              "平板",
+              "Pad"
+            ]
+          }
+        },
+        "extract": {
+          "header": [
+            "备件名称",
+            "保外物料指导价（元）",
+            "保外人工指导价（元）"
+          ],
+          "cols": {
+            "part": 0,
+            "material_price": 1,
+            "labor_price": 2
+          },
+          "note": "DOM 点选路径（xiaomi_material_table）的历史映射，现已弃用；xiaomi_api 按接口字段直取，不再依赖此选择器"
+        },
+        "evidence": {
+          "screenshot": "references/calibration/xiaomi_cal3.png",
+          "captured_url": "https://www.mi.com/service/materialprice",
+          "captured_at": "2026-08-27T14:30",
+          "api_verified_at": "2026-09-17T19:40",
+          "api_sample_url": "https://api2.service.order.mi.com/repair_price/shop_band_wx_price?class_id=44799&callback=cb"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-09-18",
+        "sample": {
+          "model": "Xiaomi 13 Pro 8GB内存 陶瓷黑 128GB",
+          "class_id": 44799,
+          "rows": [
+            {
+              "part": "显示屏",
+              "material": "1120",
+              "labor": "40"
+            },
+            {
+              "part": "主板",
+              "material": "2240",
+              "labor": "40"
+            },
+            {
+              "part": "电池",
+              "material": "99",
+              "labor": "40"
+            },
+            {
+              "part": "电池盖",
+              "material": "270",
+              "labor": "40"
+            },
+            {
+              "part": "后置摄像头（主摄）",
+              "material": "650",
+              "labor": "40"
+            },
+            {
+              "part": "后置摄像头（长焦）",
+              "material": "130",
+              "labor": "40"
+            },
+            {
+              "part": "扬声器",
+              "material": "30",
+              "labor": "40"
+            }
+          ]
+        },
+        "notes": "【2026-09-17 改走官方 JSONP 接口】原 DOM 点选路径（xiaomi_material_table）实测跑到一半 Page crashed、943 台耗时 946~1059s 仍 0 行落库，且人工费列从未成功（has_labor_split 全 0），已弃用；该 mode 函数保留，仅作历史回放/对照。现用 shop_class_info 一次拿全站分类树（L1 品类→L2 系列→L3 具体型号，共 3671 个 L3；其中『小米手机』=943 个，与平台既有口径一致），再按 L3 的 class_id 请求 shop_band_wx_price 取该 SKU 价表。接口为 JSONP，必须带 callback 参数（否则返回 code=-30005『jsonp没有传入callback』）。价表字段：sale_price=保外物料指导价（元）、handwork_cost=保外人工指导价（元），总价=两者之和，人工费可如实单列取证；out_warranty_price 恒为 0，不是物料价，勿用。code=14『该产品暂无相关数据』= 官方本就没这台机的价（noprice，非故障）。实测 100 台并发 8 仅 5.2s、0 报错，943 台约 48s，全程无需浏览器、不占浏览器池。页面 HTML 内联的 `var $DATA`（机型→备件下拉树）**不含价格**，只有选中型号后才请求价格接口，故不作为抓取入口。 【2026-09-18 扩品类】原 categories 只写 [\"小米手机\"]（943 台），漏掉官方分类树里的 **Redmi手机 1317 台**（同为手机，是比品类问题更大的缺口）与**智能穿戴及耳机 173 台**（手表/耳机，按用户确认的全品类口径应收）。已扩为 [小米手机,Redmi手机,智能穿戴及耳机]，合计 2433 台。⚠️「电脑办公」L1 里平板与笔记本混在一起，用 series_filter 只收平板（排除 292 台笔记本）。未收：智能电视212/大家电260/电脑办公469/智能家居184/厨房电器87/车载出行16/消费电子10 ——与手机备件比价无关，纳入会淹没大盘，待业务确认。⚠️ 全品类口径下必须按 models.category 分组比价（平板屏幕 ≠ 手机屏幕）。"
+      }
+    ]
+  }
+}

@@ -1,0 +1,1152 @@
+{
+  "captured_at": "2026-08-27T14:11:21",
+  "api_base": "https://sgp-sow-cms.oppo.com/oppo-server",
+  "tr_globals": {
+    "SOWAPIPATH": "https://sgp-sow-cms.oppo.com/oppo-server",
+    "GCSMAPIPATH": "https://sgp-sow-cms.oppo.com/oppo-api",
+    "SOWREGION": "tr",
+    "SOWLANGID": "1055"
+  },
+  "results": {
+    "de": {
+      "area": "de",
+      "status": "ok",
+      "lang_used": "de",
+      "phone_count": 138,
+      "sample_models": [
+        "OPPO Ace2",
+        "OPPO Reno Ace",
+        "OPPO A1 5G",
+        "OPPO A1 Pro 5G",
+        "OPPO A1 活力版 5G",
+        "OPPO A11",
+        "OPPO A11s",
+        "OPPO A11x"
+      ],
+      "prices": [
+        {
+          "model": "OPPO Ace2",
+          "parts": [
+            {
+              "partName": "屏幕组件（梦幻紫）",
+              "partPrice": "820.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "屏幕组件（极光银）",
+              "partPrice": "820.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "屏幕组件（月岩灰）",
+              "partPrice": "820.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "屏幕组件（EVA限定版 觉醒紫）",
+              "partPrice": "820.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "主板（8G 128G）",
+              "partPrice": "2350.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "主板（8G 256G）",
+              "partPrice": "2650.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "主板（12G 256G）",
+              "partPrice": "2850.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "电池盖组件",
+              "partPrice": "220.00",
+              "typeName": "手机-电池盖组件"
+            },
+            {
+              "partName": "前置摄像头",
+              "partPrice": "200.00",
+              "typeName": "手机-前置（主）摄像头"
+            },
+            {
+              "partName": "后置（主）摄像头（48M）",
+              "partPrice": "265.00",
+              "typeName": "手机-后置（主）摄像头"
+            },
+            {
+              "partName": "后置广角摄像头（8M）",
+              "partPrice": "95.00",
+              "typeName": "手机-后置（广角）摄像头"
+            },
+            {
+              "partName": "后置复古摄像头（2M）",
+              "partPrice": "19.00",
+              "typeName": "手机-后置双摄像头"
+            },
+            {
+              "partName": "后置人像摄像头（2M）",
+              "partPrice": "19.00",
+              "typeName": "手机-后置双摄像头"
+            },
+            {
+              "partName": "电池",
+              "partPrice": "129.00",
+              "typeName": "手机-电池"
+            },
+            {
+              "partName": "超级闪充电源适配器(10V 6.5A )",
+              "partPrice": "149.00",
+              "typeName": "手机-电源适配器"
+            },
+            {
+              "partName": "闪充数据线（Type C）",
+              "partPrice": "49.00",
+              "typeName": "手机-USB线"
+            },
+            {
+              "partName": "耳机（Type C）",
+              "partPrice": "69.00",
+              "typeName": "手机-耳机"
+            },
+            {
+              "partName": "受话器",
+              "partPrice": "40.00",
+              "typeName": "手机-受话器"
+            },
+            {
+              "partName": "扬声器",
+              "partPrice": "40.00",
+              "typeName": "手机-扬声器"
+            },
+            {
+              "partName": "马达",
+              "partPrice": "50.00",
+              "typeName": "手机-马达"
+            },
+            {
+              "partName": "充电接口",
+              "partPrice": "40.00",
+              "typeName": "手机-充电接口"
+            }
+          ]
+        },
+        {
+          "model": "OPPO Reno Ace",
+          "parts": [
+            {
+              "partName": "屏幕组件",
+              "partPrice": "790.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "屏幕组件（高达版）",
+              "partPrice": "890.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "主板（12G 256G）",
+              "partPrice": "1950.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "主板（8G 256G）",
+              "partPrice": "1780.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "主板（8G 128G）",
+              "partPrice": "1650.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "电池盖组件",
+              "partPrice": "220.00",
+              "typeName": "手机-电池盖组件"
+            },
+            {
+              "partName": "电池盖组件（高达版）",
+              "partPrice": "350.00",
+              "typeName": "手机-电池盖组件"
+            },
+            {
+              "partName": "前置摄像头",
+              "partPrice": "200.00",
+              "typeName": "手机-前置（主）摄像头"
+            },
+            {
+              "partName": "后置（主）摄像头（48M）",
+              "partPrice": "265.00",
+              "typeName": "手机-后置（主）摄像头"
+            },
+            {
+              "partName": "后置广角摄像头（8M）",
+              "partPrice": "95.00",
+              "typeName": "手机-后置（广角）摄像头"
+            },
+            {
+              "partName": "后置长焦摄像头（13M）",
+              "partPrice": "95.00",
+              "typeName": "手机-后置（长焦）摄像头"
+            },
+            {
+              "partName": "后置黑白摄像头（2M）",
+              "partPrice": "19.00",
+              "typeName": "手机-后置（黑白）摄像头"
+            },
+            {
+              "partName": "电池",
+              "partPrice": "129.00",
+              "typeName": "手机-电池"
+            },
+            {
+              "partName": "超级闪充电源适配器(10V 6.5A)",
+              "partPrice": "169.00",
+              "typeName": "手机-电源适配器"
+            },
+            {
+              "partName": "闪充USB线(Type-C)",
+              "partPrice": "49.00",
+              "typeName": "手机-USB线"
+            },
+            {
+              "partName": "受话器",
+              "partPrice": "40.00",
+              "typeName": "手机-受话器"
+            },
+            {
+              "partName": "扬声器",
+              "partPrice": "40.00",
+              "typeName": "手机-扬声器"
+            },
+            {
+              "partName": "马达",
+              "partPrice": "40.00",
+              "typeName": "手机-马达"
+            },
+            {
+              "partName": "充电接口",
+              "partPrice": "40.00",
+              "typeName": "手机-充电接口"
+            }
+          ]
+        }
+      ]
+    },
+    "mx": {
+      "area": "mx",
+      "status": "ok",
+      "lang_used": "es",
+      "phone_count": 138,
+      "sample_models": [
+        "OPPO Ace2",
+        "OPPO Reno Ace",
+        "OPPO A1 5G",
+        "OPPO A1 Pro 5G",
+        "OPPO A1 活力版 5G",
+        "OPPO A11",
+        "OPPO A11s",
+        "OPPO A11x"
+      ],
+      "prices": [
+        {
+          "model": "OPPO Ace2",
+          "parts": [
+            {
+              "partName": "屏幕组件（梦幻紫）",
+              "partPrice": "820.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "屏幕组件（极光银）",
+              "partPrice": "820.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "屏幕组件（月岩灰）",
+              "partPrice": "820.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "屏幕组件（EVA限定版 觉醒紫）",
+              "partPrice": "820.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "主板（8G 128G）",
+              "partPrice": "2350.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "主板（8G 256G）",
+              "partPrice": "2650.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "主板（12G 256G）",
+              "partPrice": "2850.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "电池盖组件",
+              "partPrice": "220.00",
+              "typeName": "手机-电池盖组件"
+            },
+            {
+              "partName": "前置摄像头",
+              "partPrice": "200.00",
+              "typeName": "手机-前置（主）摄像头"
+            },
+            {
+              "partName": "后置（主）摄像头（48M）",
+              "partPrice": "265.00",
+              "typeName": "手机-后置（主）摄像头"
+            },
+            {
+              "partName": "后置广角摄像头（8M）",
+              "partPrice": "95.00",
+              "typeName": "手机-后置（广角）摄像头"
+            },
+            {
+              "partName": "后置复古摄像头（2M）",
+              "partPrice": "19.00",
+              "typeName": "手机-后置双摄像头"
+            },
+            {
+              "partName": "后置人像摄像头（2M）",
+              "partPrice": "19.00",
+              "typeName": "手机-后置双摄像头"
+            },
+            {
+              "partName": "电池",
+              "partPrice": "129.00",
+              "typeName": "手机-电池"
+            },
+            {
+              "partName": "超级闪充电源适配器(10V 6.5A )",
+              "partPrice": "149.00",
+              "typeName": "手机-电源适配器"
+            },
+            {
+              "partName": "闪充数据线（Type C）",
+              "partPrice": "49.00",
+              "typeName": "手机-USB线"
+            },
+            {
+              "partName": "耳机（Type C）",
+              "partPrice": "69.00",
+              "typeName": "手机-耳机"
+            },
+            {
+              "partName": "受话器",
+              "partPrice": "40.00",
+              "typeName": "手机-受话器"
+            },
+            {
+              "partName": "扬声器",
+              "partPrice": "40.00",
+              "typeName": "手机-扬声器"
+            },
+            {
+              "partName": "马达",
+              "partPrice": "50.00",
+              "typeName": "手机-马达"
+            },
+            {
+              "partName": "充电接口",
+              "partPrice": "40.00",
+              "typeName": "手机-充电接口"
+            }
+          ]
+        },
+        {
+          "model": "OPPO Reno Ace",
+          "parts": [
+            {
+              "partName": "屏幕组件",
+              "partPrice": "790.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "屏幕组件（高达版）",
+              "partPrice": "890.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "主板（12G 256G）",
+              "partPrice": "1950.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "主板（8G 256G）",
+              "partPrice": "1780.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "主板（8G 128G）",
+              "partPrice": "1650.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "电池盖组件",
+              "partPrice": "220.00",
+              "typeName": "手机-电池盖组件"
+            },
+            {
+              "partName": "电池盖组件（高达版）",
+              "partPrice": "350.00",
+              "typeName": "手机-电池盖组件"
+            },
+            {
+              "partName": "前置摄像头",
+              "partPrice": "200.00",
+              "typeName": "手机-前置（主）摄像头"
+            },
+            {
+              "partName": "后置（主）摄像头（48M）",
+              "partPrice": "265.00",
+              "typeName": "手机-后置（主）摄像头"
+            },
+            {
+              "partName": "后置广角摄像头（8M）",
+              "partPrice": "95.00",
+              "typeName": "手机-后置（广角）摄像头"
+            },
+            {
+              "partName": "后置长焦摄像头（13M）",
+              "partPrice": "95.00",
+              "typeName": "手机-后置（长焦）摄像头"
+            },
+            {
+              "partName": "后置黑白摄像头（2M）",
+              "partPrice": "19.00",
+              "typeName": "手机-后置（黑白）摄像头"
+            },
+            {
+              "partName": "电池",
+              "partPrice": "129.00",
+              "typeName": "手机-电池"
+            },
+            {
+              "partName": "超级闪充电源适配器(10V 6.5A)",
+              "partPrice": "169.00",
+              "typeName": "手机-电源适配器"
+            },
+            {
+              "partName": "闪充USB线(Type-C)",
+              "partPrice": "49.00",
+              "typeName": "手机-USB线"
+            },
+            {
+              "partName": "受话器",
+              "partPrice": "40.00",
+              "typeName": "手机-受话器"
+            },
+            {
+              "partName": "扬声器",
+              "partPrice": "40.00",
+              "typeName": "手机-扬声器"
+            },
+            {
+              "partName": "马达",
+              "partPrice": "40.00",
+              "typeName": "手机-马达"
+            },
+            {
+              "partName": "充电接口",
+              "partPrice": "40.00",
+              "typeName": "手机-充电接口"
+            }
+          ]
+        }
+      ]
+    },
+    "my": {
+      "area": "my",
+      "status": "ok",
+      "lang_used": "ms",
+      "phone_count": 138,
+      "sample_models": [
+        "OPPO Ace2",
+        "OPPO Reno Ace",
+        "OPPO A1 5G",
+        "OPPO A1 Pro 5G",
+        "OPPO A1 活力版 5G",
+        "OPPO A11",
+        "OPPO A11s",
+        "OPPO A11x"
+      ],
+      "prices": [
+        {
+          "model": "OPPO Ace2",
+          "parts": [
+            {
+              "partName": "屏幕组件（梦幻紫）",
+              "partPrice": "820.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "屏幕组件（极光银）",
+              "partPrice": "820.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "屏幕组件（月岩灰）",
+              "partPrice": "820.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "屏幕组件（EVA限定版 觉醒紫）",
+              "partPrice": "820.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "主板（8G 128G）",
+              "partPrice": "2350.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "主板（8G 256G）",
+              "partPrice": "2650.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "主板（12G 256G）",
+              "partPrice": "2850.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "电池盖组件",
+              "partPrice": "220.00",
+              "typeName": "手机-电池盖组件"
+            },
+            {
+              "partName": "前置摄像头",
+              "partPrice": "200.00",
+              "typeName": "手机-前置（主）摄像头"
+            },
+            {
+              "partName": "后置（主）摄像头（48M）",
+              "partPrice": "265.00",
+              "typeName": "手机-后置（主）摄像头"
+            },
+            {
+              "partName": "后置广角摄像头（8M）",
+              "partPrice": "95.00",
+              "typeName": "手机-后置（广角）摄像头"
+            },
+            {
+              "partName": "后置复古摄像头（2M）",
+              "partPrice": "19.00",
+              "typeName": "手机-后置双摄像头"
+            },
+            {
+              "partName": "后置人像摄像头（2M）",
+              "partPrice": "19.00",
+              "typeName": "手机-后置双摄像头"
+            },
+            {
+              "partName": "电池",
+              "partPrice": "129.00",
+              "typeName": "手机-电池"
+            },
+            {
+              "partName": "超级闪充电源适配器(10V 6.5A )",
+              "partPrice": "149.00",
+              "typeName": "手机-电源适配器"
+            },
+            {
+              "partName": "闪充数据线（Type C）",
+              "partPrice": "49.00",
+              "typeName": "手机-USB线"
+            },
+            {
+              "partName": "耳机（Type C）",
+              "partPrice": "69.00",
+              "typeName": "手机-耳机"
+            },
+            {
+              "partName": "受话器",
+              "partPrice": "40.00",
+              "typeName": "手机-受话器"
+            },
+            {
+              "partName": "扬声器",
+              "partPrice": "40.00",
+              "typeName": "手机-扬声器"
+            },
+            {
+              "partName": "马达",
+              "partPrice": "50.00",
+              "typeName": "手机-马达"
+            },
+            {
+              "partName": "充电接口",
+              "partPrice": "40.00",
+              "typeName": "手机-充电接口"
+            }
+          ]
+        },
+        {
+          "model": "OPPO Reno Ace",
+          "parts": [
+            {
+              "partName": "屏幕组件",
+              "partPrice": "790.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "屏幕组件（高达版）",
+              "partPrice": "890.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "主板（12G 256G）",
+              "partPrice": "1950.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "主板（8G 256G）",
+              "partPrice": "1780.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "主板（8G 128G）",
+              "partPrice": "1650.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "电池盖组件",
+              "partPrice": "220.00",
+              "typeName": "手机-电池盖组件"
+            },
+            {
+              "partName": "电池盖组件（高达版）",
+              "partPrice": "350.00",
+              "typeName": "手机-电池盖组件"
+            },
+            {
+              "partName": "前置摄像头",
+              "partPrice": "200.00",
+              "typeName": "手机-前置（主）摄像头"
+            },
+            {
+              "partName": "后置（主）摄像头（48M）",
+              "partPrice": "265.00",
+              "typeName": "手机-后置（主）摄像头"
+            },
+            {
+              "partName": "后置广角摄像头（8M）",
+              "partPrice": "95.00",
+              "typeName": "手机-后置（广角）摄像头"
+            },
+            {
+              "partName": "后置长焦摄像头（13M）",
+              "partPrice": "95.00",
+              "typeName": "手机-后置（长焦）摄像头"
+            },
+            {
+              "partName": "后置黑白摄像头（2M）",
+              "partPrice": "19.00",
+              "typeName": "手机-后置（黑白）摄像头"
+            },
+            {
+              "partName": "电池",
+              "partPrice": "129.00",
+              "typeName": "手机-电池"
+            },
+            {
+              "partName": "超级闪充电源适配器(10V 6.5A)",
+              "partPrice": "169.00",
+              "typeName": "手机-电源适配器"
+            },
+            {
+              "partName": "闪充USB线(Type-C)",
+              "partPrice": "49.00",
+              "typeName": "手机-USB线"
+            },
+            {
+              "partName": "受话器",
+              "partPrice": "40.00",
+              "typeName": "手机-受话器"
+            },
+            {
+              "partName": "扬声器",
+              "partPrice": "40.00",
+              "typeName": "手机-扬声器"
+            },
+            {
+              "partName": "马达",
+              "partPrice": "40.00",
+              "typeName": "手机-马达"
+            },
+            {
+              "partName": "充电接口",
+              "partPrice": "40.00",
+              "typeName": "手机-充电接口"
+            }
+          ]
+        }
+      ]
+    },
+    "jp": {
+      "area": "jp",
+      "status": "ok",
+      "lang_used": "ja",
+      "phone_count": 138,
+      "sample_models": [
+        "OPPO Ace2",
+        "OPPO Reno Ace",
+        "OPPO A1 5G",
+        "OPPO A1 Pro 5G",
+        "OPPO A1 活力版 5G",
+        "OPPO A11",
+        "OPPO A11s",
+        "OPPO A11x"
+      ],
+      "prices": [
+        {
+          "model": "OPPO Ace2",
+          "parts": [
+            {
+              "partName": "屏幕组件（梦幻紫）",
+              "partPrice": "820.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "屏幕组件（极光银）",
+              "partPrice": "820.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "屏幕组件（月岩灰）",
+              "partPrice": "820.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "屏幕组件（EVA限定版 觉醒紫）",
+              "partPrice": "820.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "主板（8G 128G）",
+              "partPrice": "2350.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "主板（8G 256G）",
+              "partPrice": "2650.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "主板（12G 256G）",
+              "partPrice": "2850.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "电池盖组件",
+              "partPrice": "220.00",
+              "typeName": "手机-电池盖组件"
+            },
+            {
+              "partName": "前置摄像头",
+              "partPrice": "200.00",
+              "typeName": "手机-前置（主）摄像头"
+            },
+            {
+              "partName": "后置（主）摄像头（48M）",
+              "partPrice": "265.00",
+              "typeName": "手机-后置（主）摄像头"
+            },
+            {
+              "partName": "后置广角摄像头（8M）",
+              "partPrice": "95.00",
+              "typeName": "手机-后置（广角）摄像头"
+            },
+            {
+              "partName": "后置复古摄像头（2M）",
+              "partPrice": "19.00",
+              "typeName": "手机-后置双摄像头"
+            },
+            {
+              "partName": "后置人像摄像头（2M）",
+              "partPrice": "19.00",
+              "typeName": "手机-后置双摄像头"
+            },
+            {
+              "partName": "电池",
+              "partPrice": "129.00",
+              "typeName": "手机-电池"
+            },
+            {
+              "partName": "超级闪充电源适配器(10V 6.5A )",
+              "partPrice": "149.00",
+              "typeName": "手机-电源适配器"
+            },
+            {
+              "partName": "闪充数据线（Type C）",
+              "partPrice": "49.00",
+              "typeName": "手机-USB线"
+            },
+            {
+              "partName": "耳机（Type C）",
+              "partPrice": "69.00",
+              "typeName": "手机-耳机"
+            },
+            {
+              "partName": "受话器",
+              "partPrice": "40.00",
+              "typeName": "手机-受话器"
+            },
+            {
+              "partName": "扬声器",
+              "partPrice": "40.00",
+              "typeName": "手机-扬声器"
+            },
+            {
+              "partName": "马达",
+              "partPrice": "50.00",
+              "typeName": "手机-马达"
+            },
+            {
+              "partName": "充电接口",
+              "partPrice": "40.00",
+              "typeName": "手机-充电接口"
+            }
+          ]
+        },
+        {
+          "model": "OPPO Reno Ace",
+          "parts": [
+            {
+              "partName": "屏幕组件",
+              "partPrice": "790.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "屏幕组件（高达版）",
+              "partPrice": "890.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "主板（12G 256G）",
+              "partPrice": "1950.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "主板（8G 256G）",
+              "partPrice": "1780.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "主板（8G 128G）",
+              "partPrice": "1650.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "电池盖组件",
+              "partPrice": "220.00",
+              "typeName": "手机-电池盖组件"
+            },
+            {
+              "partName": "电池盖组件（高达版）",
+              "partPrice": "350.00",
+              "typeName": "手机-电池盖组件"
+            },
+            {
+              "partName": "前置摄像头",
+              "partPrice": "200.00",
+              "typeName": "手机-前置（主）摄像头"
+            },
+            {
+              "partName": "后置（主）摄像头（48M）",
+              "partPrice": "265.00",
+              "typeName": "手机-后置（主）摄像头"
+            },
+            {
+              "partName": "后置广角摄像头（8M）",
+              "partPrice": "95.00",
+              "typeName": "手机-后置（广角）摄像头"
+            },
+            {
+              "partName": "后置长焦摄像头（13M）",
+              "partPrice": "95.00",
+              "typeName": "手机-后置（长焦）摄像头"
+            },
+            {
+              "partName": "后置黑白摄像头（2M）",
+              "partPrice": "19.00",
+              "typeName": "手机-后置（黑白）摄像头"
+            },
+            {
+              "partName": "电池",
+              "partPrice": "129.00",
+              "typeName": "手机-电池"
+            },
+            {
+              "partName": "超级闪充电源适配器(10V 6.5A)",
+              "partPrice": "169.00",
+              "typeName": "手机-电源适配器"
+            },
+            {
+              "partName": "闪充USB线(Type-C)",
+              "partPrice": "49.00",
+              "typeName": "手机-USB线"
+            },
+            {
+              "partName": "受话器",
+              "partPrice": "40.00",
+              "typeName": "手机-受话器"
+            },
+            {
+              "partName": "扬声器",
+              "partPrice": "40.00",
+              "typeName": "手机-扬声器"
+            },
+            {
+              "partName": "马达",
+              "partPrice": "40.00",
+              "typeName": "手机-马达"
+            },
+            {
+              "partName": "充电接口",
+              "partPrice": "40.00",
+              "typeName": "手机-充电接口"
+            }
+          ]
+        }
+      ]
+    },
+    "ae": {
+      "area": "ae",
+      "status": "ok",
+      "lang_used": "ar",
+      "phone_count": 138,
+      "sample_models": [
+        "OPPO Ace2",
+        "OPPO Reno Ace",
+        "OPPO A1 5G",
+        "OPPO A1 Pro 5G",
+        "OPPO A1 活力版 5G",
+        "OPPO A11",
+        "OPPO A11s",
+        "OPPO A11x"
+      ],
+      "prices": [
+        {
+          "model": "OPPO Ace2",
+          "parts": [
+            {
+              "partName": "屏幕组件（梦幻紫）",
+              "partPrice": "820.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "屏幕组件（极光银）",
+              "partPrice": "820.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "屏幕组件（月岩灰）",
+              "partPrice": "820.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "屏幕组件（EVA限定版 觉醒紫）",
+              "partPrice": "820.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "主板（8G 128G）",
+              "partPrice": "2350.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "主板（8G 256G）",
+              "partPrice": "2650.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "主板（12G 256G）",
+              "partPrice": "2850.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "电池盖组件",
+              "partPrice": "220.00",
+              "typeName": "手机-电池盖组件"
+            },
+            {
+              "partName": "前置摄像头",
+              "partPrice": "200.00",
+              "typeName": "手机-前置（主）摄像头"
+            },
+            {
+              "partName": "后置（主）摄像头（48M）",
+              "partPrice": "265.00",
+              "typeName": "手机-后置（主）摄像头"
+            },
+            {
+              "partName": "后置广角摄像头（8M）",
+              "partPrice": "95.00",
+              "typeName": "手机-后置（广角）摄像头"
+            },
+            {
+              "partName": "后置复古摄像头（2M）",
+              "partPrice": "19.00",
+              "typeName": "手机-后置双摄像头"
+            },
+            {
+              "partName": "后置人像摄像头（2M）",
+              "partPrice": "19.00",
+              "typeName": "手机-后置双摄像头"
+            },
+            {
+              "partName": "电池",
+              "partPrice": "129.00",
+              "typeName": "手机-电池"
+            },
+            {
+              "partName": "超级闪充电源适配器(10V 6.5A )",
+              "partPrice": "149.00",
+              "typeName": "手机-电源适配器"
+            },
+            {
+              "partName": "闪充数据线（Type C）",
+              "partPrice": "49.00",
+              "typeName": "手机-USB线"
+            },
+            {
+              "partName": "耳机（Type C）",
+              "partPrice": "69.00",
+              "typeName": "手机-耳机"
+            },
+            {
+              "partName": "受话器",
+              "partPrice": "40.00",
+              "typeName": "手机-受话器"
+            },
+            {
+              "partName": "扬声器",
+              "partPrice": "40.00",
+              "typeName": "手机-扬声器"
+            },
+            {
+              "partName": "马达",
+              "partPrice": "50.00",
+              "typeName": "手机-马达"
+            },
+            {
+              "partName": "充电接口",
+              "partPrice": "40.00",
+              "typeName": "手机-充电接口"
+            }
+          ]
+        },
+        {
+          "model": "OPPO Reno Ace",
+          "parts": [
+            {
+              "partName": "屏幕组件",
+              "partPrice": "790.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "屏幕组件（高达版）",
+              "partPrice": "890.00",
+              "typeName": "手机-屏幕组件"
+            },
+            {
+              "partName": "主板（12G 256G）",
+              "partPrice": "1950.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "主板（8G 256G）",
+              "partPrice": "1780.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "主板（8G 128G）",
+              "partPrice": "1650.00",
+              "typeName": "手机-主板"
+            },
+            {
+              "partName": "电池盖组件",
+              "partPrice": "220.00",
+              "typeName": "手机-电池盖组件"
+            },
+            {
+              "partName": "电池盖组件（高达版）",
+              "partPrice": "350.00",
+              "typeName": "手机-电池盖组件"
+            },
+            {
+              "partName": "前置摄像头",
+              "partPrice": "200.00",
+              "typeName": "手机-前置（主）摄像头"
+            },
+            {
+              "partName": "后置（主）摄像头（48M）",
+              "partPrice": "265.00",
+              "typeName": "手机-后置（主）摄像头"
+            },
+            {
+              "partName": "后置广角摄像头（8M）",
+              "partPrice": "95.00",
+              "typeName": "手机-后置（广角）摄像头"
+            },
+            {
+              "partName": "后置长焦摄像头（13M）",
+              "partPrice": "95.00",
+              "typeName": "手机-后置（长焦）摄像头"
+            },
+            {
+              "partName": "后置黑白摄像头（2M）",
+              "partPrice": "19.00",
+              "typeName": "手机-后置（黑白）摄像头"
+            },
+            {
+              "partName": "电池",
+              "partPrice": "129.00",
+              "typeName": "手机-电池"
+            },
+            {
+              "partName": "超级闪充电源适配器(10V 6.5A)",
+              "partPrice": "169.00",
+              "typeName": "手机-电源适配器"
+            },
+            {
+              "partName": "闪充USB线(Type-C)",
+              "partPrice": "49.00",
+              "typeName": "手机-USB线"
+            },
+            {
+              "partName": "受话器",
+              "partPrice": "40.00",
+              "typeName": "手机-受话器"
+            },
+            {
+              "partName": "扬声器",
+              "partPrice": "40.00",
+              "typeName": "手机-扬声器"
+            },
+            {
+              "partName": "马达",
+              "partPrice": "40.00",
+              "typeName": "手机-马达"
+            },
+            {
+              "partName": "充电接口",
+              "partPrice": "40.00",
+              "typeName": "手机-充电接口"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

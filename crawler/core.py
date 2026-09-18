@@ -11,7 +11,9 @@ from pathlib import Path
 SKILL_ROOT = Path(r"C:/Users/Dong/.workbuddy/skills/spare-parts-price")
 SKILL_SCRIPTS = SKILL_ROOT / "scripts"
 SKILL_CALIB = SKILL_ROOT / "references" / "calibration"
-for p in (SKILL_SCRIPTS, SKILL_CALIB):
+# 仓库内已同步的副本优先（vendor/），skill 目录作为回退
+VENDOR = Path(__file__).resolve().parents[1] / "vendor"
+for p in (SKILL_CALIB, SKILL_SCRIPTS, VENDOR):  # 逆序插入 -> vendor 最终排在最前
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 

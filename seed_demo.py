@@ -25,8 +25,12 @@ from statistics import median
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import db
 
-KB = Path(r"C:/Users/Dong/.workbuddy/skills/spare-parts-price/references/kb")
-CAL = Path(r"C:/Users/Dong/.workbuddy/skills/spare-parts-price/references/calibration")
+# KB / 标定数据：优先仓库内副本（references/），缺失时回退到 skill 目录
+_REPO_REF = Path(__file__).resolve().parent / "references"
+_SKILL_REF = Path(r"C:/Users/Dong/.workbuddy/skills/spare-parts-price/references")
+_REF = _REPO_REF if (_REPO_REF / "kb" / "vivo.json").exists() else _SKILL_REF
+KB = _REF / "kb"
+CAL = _REF / "calibration"
 
 # 历史季度（最新排在最后）；TREND 为相对最新价的倍率（过去更贵，体现“等等更便宜”）
 QUARTERS = ["2025Q4", "2026Q1", "2026Q2", "2026Q3"]

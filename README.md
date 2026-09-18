@@ -138,3 +138,22 @@ python issue_queue.py resolve <id> "<诊断>" "<修改>"     :: 标记已修复�
 - 抓取可能违反各站 ToS，建议仅内部竞品比价、控制频率。
 - 各区域价格 API 可能返回统一基准价（OPPO 已知各区域数值相同，币种待前端本地化确认）。
 - Google 在国内需代理/海外节点；Apple/vivo/小米注意限速与反爬。
+
+## 外部依赖与自包含
+抓取配方与金额解析原本硬依赖仓库外的 `~/.workbuddy/skills/spare-parts-price/`，
+现已同步进仓库，保证 clone 下来即可跑：
+
+| 目录 | 内容 | 来源 |
+| --- | --- | --- |
+| `references/kb/` | 各品牌抓取配方 KB（apple/google/oppo/samsung/vivo/xiaomi） | skill `references/kb/*.json` |
+| `references/calibration/` | 标定数据与标定脚本 | skill `references/calibration/` |
+| `vendor/normalize.py` | 金额解析唯一实现（各国 `.`/`,` 含义相反，勿另写实现） | skill `scripts/normalize.py` |
+
+运行期代码已改为**仓库副本优先、skill 目录回退**，因此：
+- 装了 skill：两边一致，行为不变；
+- 没装 skill：仓库副本独立工作。
+
+skill 侧若有更新，执行 `python tools/sync_skill_deps.py` 回灌（`--check` 只查漂移不写盘）。
+
+唯一仍需 skill 目录的是 `executor.py`（浏览器抓取执行器，1442 行，随 skill 迭代），
+由 `crawler/core.py` 注入 `sys.path`；缺失时抓取步骤会报 `ModuleNotFoundError: executor`。

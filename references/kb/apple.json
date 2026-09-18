@@ -1,0 +1,881 @@
+{
+  "brand": "apple",
+  "countries": {
+    "de": [
+      {
+        "device_category": "phone",
+        "locale": "de-DE",
+        "currency": "EUR",
+        "entry": {
+          "url": "https://support.apple.com/de-de/iphone/repair",
+          "steps": [
+            {
+              "act": "goto",
+              "url": "https://support.apple.com/de-de/iphone/repair"
+            },
+            {
+              "act": "wait",
+              "until": "selector_visible:.device-dropdown",
+              "timeout": 10000
+            }
+          ],
+          "expect_url": "https://support.apple.com/de-de/iphone/repair"
+        },
+        "query": {
+          "mode": "form_select_cascade",
+          "cascade": [
+            {
+              "field": "device",
+              "sel": ".device-dropdown",
+              "label": "设备系列",
+              "example": "iPhone 16"
+            },
+            {
+              "field": "model",
+              "sel": ".model-dropdown",
+              "label": "具体型号",
+              "example": "iPhone 16 Pro Max"
+            }
+          ],
+          "price_section_heading": "Geschätzte Servicekosten",
+          "note": "Apple 维修价为『预估服务费』(含零件+人工，VAT 另计)，按机型动态加载，非零件单独标价。选 device→model 后区域显示成本列表。标题多语：en='Estimated service cost'/de='Geschätzte Servicekosten'/ja='料金は？'(区)。"
+        },
+        "extract": {
+          "price_rows_locator": "body",
+          "pair_rule": "成本区内每行 = 服务标签 + 金额(含 €/¥/AED/RM)，配对上一行作标签",
+          "cols": {
+            "model": "机型",
+            "part": "服务",
+            "price": "预估服务费"
+          },
+          "sample": {
+            "model": "iPhone 16 Pro Max",
+            "rows": [
+              {
+                "label": "Batterieservice",
+                "price": "€135"
+              },
+              {
+                "label": "Rückglasschaden",
+                "price": "€169"
+              },
+              {
+                "label": "Schaden an der Rückkamera",
+                "price": "€299"
+              },
+              {
+                "label": "Displayschaden",
+                "price": "€488,99"
+              },
+              {
+                "label": "Schaden an Display und Rückglas",
+                "price": "€585"
+              },
+              {
+                "label": "Sonstiger Schaden",
+                "price": "€899"
+              }
+            ]
+          }
+        },
+        "evidence": {
+          "screenshot": "references/calibration/apple_de_cal.png",
+          "captured_url": "https://support.apple.com/de-de/iphone/repair?services=service",
+          "captured_at": "2026-08-27T14:25"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-09-18",
+        "notes": "【已浏览器实测校准 2026-08-27】真实入口为 /de-de/iphone/repair（旧 /de/.../screen-replacement 404）。两个自定义下拉 .device-dropdown + .model-dropdown，选机型后动态出『Geschätzte Servicekosten』。样例 iPhone 16 Pro Max 见 extract.sample。复跑 references/calibration/apple_calibrate.py。 【2026-09-18 扩品类】Apple 各品类维修页**完全同构**（.device-dropdown/.model-dropdown/价格标题一致），故同区域追加 ipad/watch 两条记录即可（Mac 页结构不同，且笔记本本就不收）。⚠️ 必须同步改 cascade 里 device/model 两级的 example：discover_cascade_models 用 example **首词做前缀过滤**，沿用 iPhone 的 example 会把 iPad/Watch 型号全滤成 0 台。⚠️ Apple 不提供 /tr/ 维修价页（三品类实测均 404），tr 保持单条 phone 记录。",
+        "price_change_note": "2026-09-17 复核：extract.sample 为 2026-08-27 的历史快照，勿当\"期望值\"。Apple 德国已把 Sonstiger Schaden 由 €899 调至 €979（其余五项 Batterieservice 135 / Rückglasschaden 169 / Schaden an der Rückkamera 299 / Displayschaden 488,99 / Schaden an Display und Rückglas 585 未变）。注意 Displayschaden 为逗号小数（德语 €488,99），任何金额解析都必须走 normalize.parse_amount()。",
+        "sample_refreshed_at": "2026-09-17T16:20"
+      },
+      {
+        "device_category": "tablet",
+        "locale": "de-DE",
+        "currency": "EUR",
+        "entry": {
+          "url": "https://support.apple.com/de-de/ipad/repair",
+          "steps": [
+            {
+              "act": "goto",
+              "url": "https://support.apple.com/de-de/ipad/repair"
+            },
+            {
+              "act": "wait",
+              "until": "selector_visible:.device-dropdown",
+              "timeout": 10000
+            }
+          ],
+          "expect_url": "https://support.apple.com/de-de/ipad/repair"
+        },
+        "query": {
+          "mode": "form_select_cascade",
+          "cascade": [
+            {
+              "field": "device",
+              "sel": ".device-dropdown",
+              "label": "设备系列",
+              "example": "iPad Pro",
+              "exclude": [
+                "Zubehör",
+                "Zubehoer",
+                "アクセサリ",
+                "accessor"
+              ]
+            },
+            {
+              "field": "model",
+              "sel": ".model-dropdown",
+              "label": "具体型号",
+              "example": "iPad Pro 13-inch (M4)"
+            }
+          ],
+          "price_section_heading": "Geschätzte Servicekosten",
+          "note": "Apple 维修价为『预估服务费』(含零件+人工，VAT 另计)，按机型动态加载，非零件单独标价。选 device→model 后区域显示成本列表。标题多语：en='Estimated service cost'/de='Geschätzte Servicekosten'/ja='料金は？'(区)。"
+        },
+        "extract": {
+          "price_rows_locator": "body",
+          "pair_rule": "成本区内每行 = 服务标签 + 金额(含 €/¥/AED/RM)，配对上一行作标签",
+          "cols": {
+            "model": "机型",
+            "part": "服务",
+            "price": "预估服务费"
+          }
+        },
+        "evidence": {
+          "screenshot": "references/calibration/apple_de_cal.png",
+          "captured_url": "https://support.apple.com/de-de/ipad/repair",
+          "captured_at": "2026-08-27T14:25"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-08-27",
+        "notes": "【已浏览器实测校准 2026-08-27】真实入口为 /de-de/iphone/repair（旧 /de/.../screen-replacement 404）。两个自定义下拉 .device-dropdown + .model-dropdown，选机型后动态出『Geschätzte Servicekosten』。样例 iPhone 16 Pro Max 见 extract.sample。复跑 references/calibration/apple_calibrate.py。 【2026-09-18 新增 tablet 品类】官方把维修价按品类拆成独立页，实测 /ipad/repair 与 /iphone/repair **结构完全同构**（device-dropdown / model-dropdown / 价格标题计数均一致），故复用 form_select_cascade 逻辑、只换 URL。⚠️ 本记录**无 extract.sample**：iPhone 样例是 2026-08-27 真机校准的历史快照，复制到 tablet 名下即伪造证据，样例价待首次抓取后回填。",
+        "price_change_note": "2026-09-17 复核：extract.sample 为 2026-08-27 的历史快照，勿当\"期望值\"。Apple 德国已把 Sonstiger Schaden 由 €899 调至 €979（其余五项 Batterieservice 135 / Rückglasschaden 169 / Schaden an der Rückkamera 299 / Displayschaden 488,99 / Schaden an Display und Rückglas 585 未变）。注意 Displayschaden 为逗号小数（德语 €488,99），任何金额解析都必须走 normalize.parse_amount()。",
+        "sample_refreshed_at": "2026-09-17T16:20"
+      },
+      {
+        "device_category": "watch",
+        "locale": "de-DE",
+        "currency": "EUR",
+        "entry": {
+          "url": "https://support.apple.com/de-de/watch/repair",
+          "steps": [
+            {
+              "act": "goto",
+              "url": "https://support.apple.com/de-de/watch/repair"
+            },
+            {
+              "act": "wait",
+              "until": "selector_visible:.device-dropdown",
+              "timeout": 10000
+            }
+          ],
+          "expect_url": "https://support.apple.com/de-de/watch/repair"
+        },
+        "query": {
+          "mode": "form_select_cascade",
+          "cascade": [
+            {
+              "field": "device",
+              "sel": ".device-dropdown",
+              "label": "设备系列",
+              "example": "Apple Watch Series 10"
+            },
+            {
+              "field": "model",
+              "sel": ".model-dropdown",
+              "label": "具体型号",
+              "example": "Apple Watch Series 10"
+            }
+          ],
+          "price_section_heading": "Geschätzte Servicekosten",
+          "note": "Apple 维修价为『预估服务费』(含零件+人工，VAT 另计)，按机型动态加载，非零件单独标价。选 device→model 后区域显示成本列表。标题多语：en='Estimated service cost'/de='Geschätzte Servicekosten'/ja='料金は？'(区)。"
+        },
+        "extract": {
+          "price_rows_locator": "body",
+          "pair_rule": "成本区内每行 = 服务标签 + 金额(含 €/¥/AED/RM)，配对上一行作标签",
+          "cols": {
+            "model": "机型",
+            "part": "服务",
+            "price": "预估服务费"
+          }
+        },
+        "evidence": {
+          "screenshot": "references/calibration/apple_de_cal.png",
+          "captured_url": "https://support.apple.com/de-de/watch/repair",
+          "captured_at": "2026-08-27T14:25"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-08-27",
+        "notes": "【已浏览器实测校准 2026-08-27】真实入口为 /de-de/iphone/repair（旧 /de/.../screen-replacement 404）。两个自定义下拉 .device-dropdown + .model-dropdown，选机型后动态出『Geschätzte Servicekosten』。样例 iPhone 16 Pro Max 见 extract.sample。复跑 references/calibration/apple_calibrate.py。 【2026-09-18 新增 watch 品类】官方把维修价按品类拆成独立页，实测 /watch/repair 与 /iphone/repair **结构完全同构**（device-dropdown / model-dropdown / 价格标题计数均一致），故复用 form_select_cascade 逻辑、只换 URL。⚠️ 本记录**无 extract.sample**：iPhone 样例是 2026-08-27 真机校准的历史快照，复制到 watch 名下即伪造证据，样例价待首次抓取后回填。",
+        "price_change_note": "2026-09-17 复核：extract.sample 为 2026-08-27 的历史快照，勿当\"期望值\"。Apple 德国已把 Sonstiger Schaden 由 €899 调至 €979（其余五项 Batterieservice 135 / Rückglasschaden 169 / Schaden an der Rückkamera 299 / Displayschaden 488,99 / Schaden an Display und Rückglas 585 未变）。注意 Displayschaden 为逗号小数（德语 €488,99），任何金额解析都必须走 normalize.parse_amount()。",
+        "sample_refreshed_at": "2026-09-17T16:20"
+      }
+    ],
+    "jp": [
+      {
+        "device_category": "phone",
+        "locale": "ja-JP",
+        "currency": "JPY",
+        "entry": {
+          "url": "https://support.apple.com/ja-jp/iphone/repair",
+          "steps": [
+            {
+              "act": "goto",
+              "url": "https://support.apple.com/ja-jp/iphone/repair"
+            },
+            {
+              "act": "wait",
+              "until": "selector_visible:.device-dropdown",
+              "timeout": 10000
+            }
+          ],
+          "expect_url": "https://support.apple.com/ja-jp/iphone/repair"
+        },
+        "query": {
+          "mode": "form_select_cascade",
+          "cascade": [
+            {
+              "field": "device",
+              "sel": ".device-dropdown",
+              "label": "デバイス",
+              "example": "iPhone 16"
+            },
+            {
+              "field": "model",
+              "sel": ".model-dropdown",
+              "label": "デバイスの種類",
+              "example": "iPhone 16 Pro Max"
+            }
+          ],
+          "price_section_heading": "料金は？",
+          "note": "同 de。日语标题用『料金は？』区，成本行标签为日语（バッテリー修理/背面ガラスの損傷/…）。"
+        },
+        "extract": {
+          "price_rows_locator": "body",
+          "pair_rule": "成本区内每行 = 服务标签 + 金额(円)，配对上一行作标签",
+          "cols": {
+            "model": "机型",
+            "part": "服务",
+            "price": "预估服务费"
+          },
+          "sample": {
+            "model": "iPhone 16 Pro Max",
+            "rows": [
+              {
+                "label": "バッテリー修理",
+                "price": "21,000円"
+              },
+              {
+                "label": "背面ガラスの損傷",
+                "price": "27,800円"
+              },
+              {
+                "label": "背面カメラの損傷",
+                "price": "43,800円"
+              },
+              {
+                "label": "画面の損傷",
+                "price": "64,800円"
+              },
+              {
+                "label": "画面および背面ガラスの損傷",
+                "price": "80,600円"
+              },
+              {
+                "label": "その他の損傷",
+                "price": "133,800円"
+              }
+            ]
+          }
+        },
+        "evidence": {
+          "screenshot": "references/calibration/apple_jp_cal.png",
+          "captured_url": "https://support.apple.com/ja-jp/iphone/repair?services=service",
+          "captured_at": "2026-08-27T14:25"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-09-18",
+        "notes": "【已浏览器实测校准 2026-08-27】真实入口 /ja-jp/iphone/repair（旧路径 404）。样例 iPhone 16 Pro Max 见 extract.sample。 【2026-09-18 扩品类】Apple 各品类维修页**完全同构**（.device-dropdown/.model-dropdown/价格标题一致），故同区域追加 ipad/watch 两条记录即可（Mac 页结构不同，且笔记本本就不收）。⚠️ 必须同步改 cascade 里 device/model 两级的 example：discover_cascade_models 用 example **首词做前缀过滤**，沿用 iPhone 的 example 会把 iPad/Watch 型号全滤成 0 台。⚠️ Apple 不提供 /tr/ 维修价页（三品类实测均 404），tr 保持单条 phone 记录。"
+      },
+      {
+        "device_category": "tablet",
+        "locale": "ja-JP",
+        "currency": "JPY",
+        "entry": {
+          "url": "https://support.apple.com/ja-jp/ipad/repair",
+          "steps": [
+            {
+              "act": "goto",
+              "url": "https://support.apple.com/ja-jp/ipad/repair"
+            },
+            {
+              "act": "wait",
+              "until": "selector_visible:.device-dropdown",
+              "timeout": 10000
+            }
+          ],
+          "expect_url": "https://support.apple.com/ja-jp/ipad/repair"
+        },
+        "query": {
+          "mode": "form_select_cascade",
+          "cascade": [
+            {
+              "field": "device",
+              "sel": ".device-dropdown",
+              "label": "デバイス",
+              "example": "iPad Pro",
+              "exclude": [
+                "Zubehör",
+                "Zubehoer",
+                "アクセサリ",
+                "accessor"
+              ]
+            },
+            {
+              "field": "model",
+              "sel": ".model-dropdown",
+              "label": "デバイスの種類",
+              "example": "iPad Pro 13-inch (M4)"
+            }
+          ],
+          "price_section_heading": "料金は？",
+          "note": "同 de。日语标题用『料金は？』区，成本行标签为日语（バッテリー修理/背面ガラスの損傷/…）。"
+        },
+        "extract": {
+          "price_rows_locator": "body",
+          "pair_rule": "成本区内每行 = 服务标签 + 金额(円)，配对上一行作标签",
+          "cols": {
+            "model": "机型",
+            "part": "服务",
+            "price": "预估服务费"
+          }
+        },
+        "evidence": {
+          "screenshot": "references/calibration/apple_jp_cal.png",
+          "captured_url": "https://support.apple.com/ja-jp/ipad/repair",
+          "captured_at": "2026-08-27T14:25"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-08-27",
+        "notes": "【已浏览器实测校准 2026-08-27】真实入口 /ja-jp/iphone/repair（旧路径 404）。样例 iPhone 16 Pro Max 见 extract.sample。 【2026-09-18 新增 tablet 品类】官方把维修价按品类拆成独立页，实测 /ipad/repair 与 /iphone/repair **结构完全同构**（device-dropdown / model-dropdown / 价格标题计数均一致），故复用 form_select_cascade 逻辑、只换 URL。⚠️ 本记录**无 extract.sample**：iPhone 样例是 2026-08-27 真机校准的历史快照，复制到 tablet 名下即伪造证据，样例价待首次抓取后回填。"
+      },
+      {
+        "device_category": "watch",
+        "locale": "ja-JP",
+        "currency": "JPY",
+        "entry": {
+          "url": "https://support.apple.com/ja-jp/watch/repair",
+          "steps": [
+            {
+              "act": "goto",
+              "url": "https://support.apple.com/ja-jp/watch/repair"
+            },
+            {
+              "act": "wait",
+              "until": "selector_visible:.device-dropdown",
+              "timeout": 10000
+            }
+          ],
+          "expect_url": "https://support.apple.com/ja-jp/watch/repair"
+        },
+        "query": {
+          "mode": "form_select_cascade",
+          "cascade": [
+            {
+              "field": "device",
+              "sel": ".device-dropdown",
+              "label": "デバイス",
+              "example": "Apple Watch Series 10"
+            },
+            {
+              "field": "model",
+              "sel": ".model-dropdown",
+              "label": "デバイスの種類",
+              "example": "Apple Watch Series 10"
+            }
+          ],
+          "price_section_heading": "料金は？",
+          "note": "同 de。日语标题用『料金は？』区，成本行标签为日语（バッテリー修理/背面ガラスの損傷/…）。"
+        },
+        "extract": {
+          "price_rows_locator": "body",
+          "pair_rule": "成本区内每行 = 服务标签 + 金额(円)，配对上一行作标签",
+          "cols": {
+            "model": "机型",
+            "part": "服务",
+            "price": "预估服务费"
+          }
+        },
+        "evidence": {
+          "screenshot": "references/calibration/apple_jp_cal.png",
+          "captured_url": "https://support.apple.com/ja-jp/watch/repair",
+          "captured_at": "2026-08-27T14:25"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-08-27",
+        "notes": "【已浏览器实测校准 2026-08-27】真实入口 /ja-jp/iphone/repair（旧路径 404）。样例 iPhone 16 Pro Max 见 extract.sample。 【2026-09-18 新增 watch 品类】官方把维修价按品类拆成独立页，实测 /watch/repair 与 /iphone/repair **结构完全同构**（device-dropdown / model-dropdown / 价格标题计数均一致），故复用 form_select_cascade 逻辑、只换 URL。⚠️ 本记录**无 extract.sample**：iPhone 样例是 2026-08-27 真机校准的历史快照，复制到 watch 名下即伪造证据，样例价待首次抓取后回填。"
+      }
+    ],
+    "ae": [
+      {
+        "device_category": "phone",
+        "locale": "en-AE",
+        "currency": "AED",
+        "entry": {
+          "url": "https://support.apple.com/en-ae/iphone/repair",
+          "steps": [
+            {
+              "act": "goto",
+              "url": "https://support.apple.com/en-ae/iphone/repair"
+            },
+            {
+              "act": "wait",
+              "until": "selector_visible:.device-dropdown",
+              "timeout": 10000
+            }
+          ],
+          "expect_url": "https://support.apple.com/en-ae/iphone/repair"
+        },
+        "query": {
+          "mode": "form_select_cascade",
+          "cascade": [
+            {
+              "field": "device",
+              "sel": ".device-dropdown",
+              "label": "Device",
+              "example": "iPhone 16"
+            },
+            {
+              "field": "model",
+              "sel": ".model-dropdown",
+              "label": "Device Type",
+              "example": "iPhone 16 Pro Max"
+            }
+          ],
+          "price_section_heading": "Estimated service cost",
+          "note": "同 de。阿联酋用 en-ae（非 ae/ae-ar，后者 404）。"
+        },
+        "extract": {
+          "price_rows_locator": "body",
+          "pair_rule": "成本区内每行 = 服务标签 + 金额(AED)，配对上一行作标签",
+          "cols": {
+            "model": "机型",
+            "part": "服务",
+            "price": "预估服务费"
+          },
+          "sample": {
+            "model": "iPhone 16 Pro Max",
+            "rows": [
+              {
+                "label": "Battery service",
+                "price": "AED 465"
+              },
+              {
+                "label": "Back glass damage",
+                "price": "AED 615"
+              },
+              {
+                "label": "Rear camera damage",
+                "price": "AED 989"
+              },
+              {
+                "label": "Screen damage",
+                "price": "AED 1,499"
+              },
+              {
+                "label": "Screen and back glass damage",
+                "price": "AED 1,849"
+              },
+              {
+                "label": "Other damage",
+                "price": "AED 2,899"
+              }
+            ]
+          }
+        },
+        "evidence": {
+          "screenshot": "references/calibration/apple_ae_cal.png",
+          "captured_url": "https://support.apple.com/en-ae/iphone/repair?services=service",
+          "captured_at": "2026-08-27T14:25"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-09-18",
+        "notes": "【已浏览器实测校准 2026-08-27】真实入口 /en-ae/iphone/repair（旧 /ae/... 404）。样例 iPhone 16 Pro Max 见 extract.sample。 【2026-09-18 扩品类】Apple 各品类维修页**完全同构**（.device-dropdown/.model-dropdown/价格标题一致），故同区域追加 ipad/watch 两条记录即可（Mac 页结构不同，且笔记本本就不收）。⚠️ 必须同步改 cascade 里 device/model 两级的 example：discover_cascade_models 用 example **首词做前缀过滤**，沿用 iPhone 的 example 会把 iPad/Watch 型号全滤成 0 台。⚠️ Apple 不提供 /tr/ 维修价页（三品类实测均 404），tr 保持单条 phone 记录。"
+      },
+      {
+        "device_category": "tablet",
+        "locale": "en-AE",
+        "currency": "AED",
+        "entry": {
+          "url": "https://support.apple.com/en-ae/ipad/repair",
+          "steps": [
+            {
+              "act": "goto",
+              "url": "https://support.apple.com/en-ae/ipad/repair"
+            },
+            {
+              "act": "wait",
+              "until": "selector_visible:.device-dropdown",
+              "timeout": 10000
+            }
+          ],
+          "expect_url": "https://support.apple.com/en-ae/ipad/repair"
+        },
+        "query": {
+          "mode": "form_select_cascade",
+          "cascade": [
+            {
+              "field": "device",
+              "sel": ".device-dropdown",
+              "label": "Device",
+              "example": "iPad Pro",
+              "exclude": [
+                "Zubehör",
+                "Zubehoer",
+                "アクセサリ",
+                "accessor"
+              ]
+            },
+            {
+              "field": "model",
+              "sel": ".model-dropdown",
+              "label": "Device Type",
+              "example": "iPad Pro 13-inch (M4)"
+            }
+          ],
+          "price_section_heading": "Estimated service cost",
+          "note": "同 de。阿联酋用 en-ae（非 ae/ae-ar，后者 404）。"
+        },
+        "extract": {
+          "price_rows_locator": "body",
+          "pair_rule": "成本区内每行 = 服务标签 + 金额(AED)，配对上一行作标签",
+          "cols": {
+            "model": "机型",
+            "part": "服务",
+            "price": "预估服务费"
+          }
+        },
+        "evidence": {
+          "screenshot": "references/calibration/apple_ae_cal.png",
+          "captured_url": "https://support.apple.com/en-ae/ipad/repair",
+          "captured_at": "2026-08-27T14:25"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-08-27",
+        "notes": "【已浏览器实测校准 2026-08-27】真实入口 /en-ae/iphone/repair（旧 /ae/... 404）。样例 iPhone 16 Pro Max 见 extract.sample。 【2026-09-18 新增 tablet 品类】官方把维修价按品类拆成独立页，实测 /ipad/repair 与 /iphone/repair **结构完全同构**（device-dropdown / model-dropdown / 价格标题计数均一致），故复用 form_select_cascade 逻辑、只换 URL。⚠️ 本记录**无 extract.sample**：iPhone 样例是 2026-08-27 真机校准的历史快照，复制到 tablet 名下即伪造证据，样例价待首次抓取后回填。"
+      },
+      {
+        "device_category": "watch",
+        "locale": "en-AE",
+        "currency": "AED",
+        "entry": {
+          "url": "https://support.apple.com/en-ae/watch/repair",
+          "steps": [
+            {
+              "act": "goto",
+              "url": "https://support.apple.com/en-ae/watch/repair"
+            },
+            {
+              "act": "wait",
+              "until": "selector_visible:.device-dropdown",
+              "timeout": 10000
+            }
+          ],
+          "expect_url": "https://support.apple.com/en-ae/watch/repair"
+        },
+        "query": {
+          "mode": "form_select_cascade",
+          "cascade": [
+            {
+              "field": "device",
+              "sel": ".device-dropdown",
+              "label": "Device",
+              "example": "Apple Watch Series 10"
+            },
+            {
+              "field": "model",
+              "sel": ".model-dropdown",
+              "label": "Device Type",
+              "example": "Apple Watch Series 10"
+            }
+          ],
+          "price_section_heading": "Estimated service cost",
+          "note": "同 de。阿联酋用 en-ae（非 ae/ae-ar，后者 404）。"
+        },
+        "extract": {
+          "price_rows_locator": "body",
+          "pair_rule": "成本区内每行 = 服务标签 + 金额(AED)，配对上一行作标签",
+          "cols": {
+            "model": "机型",
+            "part": "服务",
+            "price": "预估服务费"
+          }
+        },
+        "evidence": {
+          "screenshot": "references/calibration/apple_ae_cal.png",
+          "captured_url": "https://support.apple.com/en-ae/watch/repair",
+          "captured_at": "2026-08-27T14:25"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-08-27",
+        "notes": "【已浏览器实测校准 2026-08-27】真实入口 /en-ae/iphone/repair（旧 /ae/... 404）。样例 iPhone 16 Pro Max 见 extract.sample。 【2026-09-18 新增 watch 品类】官方把维修价按品类拆成独立页，实测 /watch/repair 与 /iphone/repair **结构完全同构**（device-dropdown / model-dropdown / 价格标题计数均一致），故复用 form_select_cascade 逻辑、只换 URL。⚠️ 本记录**无 extract.sample**：iPhone 样例是 2026-08-27 真机校准的历史快照，复制到 watch 名下即伪造证据，样例价待首次抓取后回填。"
+      }
+    ],
+    "my": [
+      {
+        "device_category": "phone",
+        "locale": "en-MY",
+        "currency": "MYR",
+        "entry": {
+          "url": "https://support.apple.com/en-my/iphone/repair",
+          "steps": [
+            {
+              "act": "goto",
+              "url": "https://support.apple.com/en-my/iphone/repair"
+            },
+            {
+              "act": "wait",
+              "until": "selector_visible:.device-dropdown",
+              "timeout": 10000
+            }
+          ],
+          "expect_url": "https://support.apple.com/en-my/iphone/repair"
+        },
+        "query": {
+          "mode": "form_select_cascade",
+          "cascade": [
+            {
+              "field": "device",
+              "sel": ".device-dropdown",
+              "label": "Device",
+              "example": "iPhone 16"
+            },
+            {
+              "field": "model",
+              "sel": ".model-dropdown",
+              "label": "Device Type",
+              "example": "iPhone 16 Pro Max"
+            }
+          ],
+          "price_section_heading": "Estimated service cost",
+          "note": "同 de。马来西亚用 en-my（非 my，后者 404）。"
+        },
+        "extract": {
+          "price_rows_locator": "body",
+          "pair_rule": "成本区内每行 = 服务标签 + 金额(RM)，配对上一行作标签",
+          "cols": {
+            "model": "机型",
+            "part": "服务",
+            "price": "预估服务费"
+          },
+          "sample": {
+            "model": "iPhone 16 Pro Max",
+            "rows": [
+              {
+                "label": "Battery service",
+                "price": "RM 549"
+              },
+              {
+                "label": "Back glass damage",
+                "price": "RM 729"
+              },
+              {
+                "label": "Rear camera damage",
+                "price": "RM 1,099"
+              },
+              {
+                "label": "Screen damage",
+                "price": "RM 1,799"
+              },
+              {
+                "label": "Screen and back glass damage",
+                "price": "RM 2,199"
+              },
+              {
+                "label": "Other damage",
+                "price": "RM 3,499"
+              }
+            ]
+          }
+        },
+        "evidence": {
+          "screenshot": "references/calibration/apple_my_cal.png",
+          "captured_url": "https://support.apple.com/en-my/iphone/repair?services=service",
+          "captured_at": "2026-08-27T14:25"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-09-18",
+        "notes": "【已浏览器实测校准 2026-08-27】真实入口 /en-my/iphone/repair（旧 /my/... 404）。样例 iPhone 16 Pro Max 见 extract.sample。 【2026-09-18 扩品类】Apple 各品类维修页**完全同构**（.device-dropdown/.model-dropdown/价格标题一致），故同区域追加 ipad/watch 两条记录即可（Mac 页结构不同，且笔记本本就不收）。⚠️ 必须同步改 cascade 里 device/model 两级的 example：discover_cascade_models 用 example **首词做前缀过滤**，沿用 iPhone 的 example 会把 iPad/Watch 型号全滤成 0 台。⚠️ Apple 不提供 /tr/ 维修价页（三品类实测均 404），tr 保持单条 phone 记录。"
+      },
+      {
+        "device_category": "tablet",
+        "locale": "en-MY",
+        "currency": "MYR",
+        "entry": {
+          "url": "https://support.apple.com/en-my/ipad/repair",
+          "steps": [
+            {
+              "act": "goto",
+              "url": "https://support.apple.com/en-my/ipad/repair"
+            },
+            {
+              "act": "wait",
+              "until": "selector_visible:.device-dropdown",
+              "timeout": 10000
+            }
+          ],
+          "expect_url": "https://support.apple.com/en-my/ipad/repair"
+        },
+        "query": {
+          "mode": "form_select_cascade",
+          "cascade": [
+            {
+              "field": "device",
+              "sel": ".device-dropdown",
+              "label": "Device",
+              "example": "iPad Pro",
+              "exclude": [
+                "Zubehör",
+                "Zubehoer",
+                "アクセサリ",
+                "accessor"
+              ]
+            },
+            {
+              "field": "model",
+              "sel": ".model-dropdown",
+              "label": "Device Type",
+              "example": "iPad Pro 13-inch (M4)"
+            }
+          ],
+          "price_section_heading": "Estimated service cost",
+          "note": "同 de。马来西亚用 en-my（非 my，后者 404）。"
+        },
+        "extract": {
+          "price_rows_locator": "body",
+          "pair_rule": "成本区内每行 = 服务标签 + 金额(RM)，配对上一行作标签",
+          "cols": {
+            "model": "机型",
+            "part": "服务",
+            "price": "预估服务费"
+          }
+        },
+        "evidence": {
+          "screenshot": "references/calibration/apple_my_cal.png",
+          "captured_url": "https://support.apple.com/en-my/ipad/repair",
+          "captured_at": "2026-08-27T14:25"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-08-27",
+        "notes": "【已浏览器实测校准 2026-08-27】真实入口 /en-my/iphone/repair（旧 /my/... 404）。样例 iPhone 16 Pro Max 见 extract.sample。 【2026-09-18 新增 tablet 品类】官方把维修价按品类拆成独立页，实测 /ipad/repair 与 /iphone/repair **结构完全同构**（device-dropdown / model-dropdown / 价格标题计数均一致），故复用 form_select_cascade 逻辑、只换 URL。⚠️ 本记录**无 extract.sample**：iPhone 样例是 2026-08-27 真机校准的历史快照，复制到 tablet 名下即伪造证据，样例价待首次抓取后回填。"
+      },
+      {
+        "device_category": "watch",
+        "locale": "en-MY",
+        "currency": "MYR",
+        "entry": {
+          "url": "https://support.apple.com/en-my/watch/repair",
+          "steps": [
+            {
+              "act": "goto",
+              "url": "https://support.apple.com/en-my/watch/repair"
+            },
+            {
+              "act": "wait",
+              "until": "selector_visible:.device-dropdown",
+              "timeout": 10000
+            }
+          ],
+          "expect_url": "https://support.apple.com/en-my/watch/repair"
+        },
+        "query": {
+          "mode": "form_select_cascade",
+          "cascade": [
+            {
+              "field": "device",
+              "sel": ".device-dropdown",
+              "label": "Device",
+              "example": "Apple Watch Series 10"
+            },
+            {
+              "field": "model",
+              "sel": ".model-dropdown",
+              "label": "Device Type",
+              "example": "Apple Watch Series 10"
+            }
+          ],
+          "price_section_heading": "Estimated service cost",
+          "note": "同 de。马来西亚用 en-my（非 my，后者 404）。"
+        },
+        "extract": {
+          "price_rows_locator": "body",
+          "pair_rule": "成本区内每行 = 服务标签 + 金额(RM)，配对上一行作标签",
+          "cols": {
+            "model": "机型",
+            "part": "服务",
+            "price": "预估服务费"
+          }
+        },
+        "evidence": {
+          "screenshot": "references/calibration/apple_my_cal.png",
+          "captured_url": "https://support.apple.com/en-my/watch/repair",
+          "captured_at": "2026-08-27T14:25"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-08-27",
+        "notes": "【已浏览器实测校准 2026-08-27】真实入口 /en-my/iphone/repair（旧 /my/... 404）。样例 iPhone 16 Pro Max 见 extract.sample。 【2026-09-18 新增 watch 品类】官方把维修价按品类拆成独立页，实测 /watch/repair 与 /iphone/repair **结构完全同构**（device-dropdown / model-dropdown / 价格标题计数均一致），故复用 form_select_cascade 逻辑、只换 URL。⚠️ 本记录**无 extract.sample**：iPhone 样例是 2026-08-27 真机校准的历史快照，复制到 watch 名下即伪造证据，样例价待首次抓取后回填。"
+      }
+    ],
+    "tr": [
+      {
+        "device_category": "phone",
+        "locale": "tr-TR",
+        "currency": "TRY",
+        "entry": {
+          "url": "https://support.apple.com/tr/iphone/repair",
+          "steps": [],
+          "expect_url": ""
+        },
+        "query": {
+          "mode": "form_select_cascade",
+          "cascade": [
+            {
+              "field": "model",
+              "example": "iPhone 16 Pro Max"
+            }
+          ],
+          "note": "Apple 未提供土耳其语区维修价页，无法校准。"
+        },
+        "extract": {
+          "cols": {
+            "model": "机型",
+            "part": "服务",
+            "price": "预估服务费"
+          }
+        },
+        "evidence": {
+          "screenshot": "",
+          "captured_url": "https://support.apple.com/tr/iphone/repair",
+          "captured_at": "2026-08-27T14:25"
+        },
+        "status": "unavailable",
+        "reviewed": true,
+        "updated_at": "2026-08-27",
+        "notes": "【已实测确认 2026-08-27】Apple 不提供土耳其语区公开维修价页：/tr/iphone/repair、/tr/iphone/repair/service 均 curl 404。Apple 仅对部分语区（de/jp/ae/en-my 等）发布维修预估费。该区域留空，后续若 Apple 上线 TR 页再校准。"
+      }
+    ]
+  }
+}

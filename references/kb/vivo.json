@@ -1,0 +1,217 @@
+{
+  "brand": "vivo",
+  "countries": {
+    "my": [
+      {
+        "device_category": "phone",
+        "locale": "ms-MY",
+        "currency": "MYR",
+        "entry": {
+          "url": "https://www.vivo.com/my/support/accessory",
+          "steps": [],
+          "expect_url": "https://www.vivo.com/my/support/accessory"
+        },
+        "query": {
+          "mode": "vivo_api",
+          "api": {
+            "fetch_mode": "http",
+            "concurrency": 6
+          }
+        },
+        "_deprecated_dom_extract": {
+          "_reason": "2026-09-17 弃用：DOM 点选存在跨机型串值（未等表格刷新就读到上一台的行），且 /ae/en 等区域选择器命中失败返回 0 行。改为官方接口取价，见 query.mode=vivo_api。保留此块仅供回溯旧口径。",
+          "row_locator": "li.container-box-item",
+          "part_locator": ".item-left-name",
+          "price_locator": ".item-right-price"
+        },
+        "evidence": {
+          "screenshot": "references/calibration/vivo_my_cal.png",
+          "captured_url": "https://www.vivo.com/my/support/accessory",
+          "captured_at": "2026-08-27T14:30",
+          "api_verified_at": "2026-09-17",
+          "api_sample_url": "https://www.vivo.com/my/support/queryPriceByProductId?id=3687"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-08-27",
+        "sample": {
+          "model": "X300 Pro",
+          "rows": [
+            {
+              "part": "Battery",
+              "price": "RM105.00"
+            },
+            {
+              "part": "Battery Cover",
+              "price": "RM210.00"
+            },
+            {
+              "part": "Display",
+              "price": "RM1,030.00"
+            },
+            {
+              "part": "MainBoard (512G+16G)",
+              "price": "RM2,775.00"
+            },
+            {
+              "part": "Rear Main Camera",
+              "price": "RM380.00"
+            }
+          ]
+        },
+        "notes": "【2026-09-17 改走官方接口】备件价不是 DOM 直出，而是点选后 POST 官方接口取的（页面 bundle support/parts/*.js 的 searchMaint：globalVar.path + '/' + globalVar.regionId + '/support/queryPriceByProductId'）。故整条链路可完全不用浏览器：GET 备件页拿 globalVar.regionId 与 SSR 的 <li class=\"select-model-item\" data-id=...>，再 POST id=<data_id> 取价表。field: data.sparePartVO.sparePartsVoList[].name/price，币种在 sparePartVO.spareCompany。⚠️ regionId 不等于国家码（ae='ae/en'），一律从页面现读。⚠️ 原 DOM 路径已弃用：存在跨机型串值（本例 X300 Pro 屏幕 DOM 落库 270，官方接口与人工校准均为 RM1,030），见 _deprecated_dom_extract。不同机型 MainBoard 容量变体价不同。币种随区域：my=RM / tr=TRY / ae=AED。"
+      }
+    ],
+    "tr": [
+      {
+        "device_category": "phone",
+        "locale": "tr-TR",
+        "currency": "TRY",
+        "entry": {
+          "url": "https://www.vivo.com/tr/support/accessory",
+          "steps": [],
+          "expect_url": "https://www.vivo.com/tr/support/accessory"
+        },
+        "query": {
+          "mode": "vivo_api",
+          "api": {
+            "fetch_mode": "http",
+            "concurrency": 6
+          }
+        },
+        "_deprecated_dom_extract": {
+          "_reason": "2026-09-17 弃用：DOM 点选存在跨机型串值（未等表格刷新就读到上一台的行），且 /ae/en 等区域选择器命中失败返回 0 行。改为官方接口取价，见 query.mode=vivo_api。保留此块仅供回溯旧口径。",
+          "row_locator": "li.container-box-item",
+          "part_locator": ".item-left-name",
+          "price_locator": ".item-right-price"
+        },
+        "evidence": {
+          "screenshot": "references/calibration/vivo_tr_cal.png",
+          "captured_url": "https://www.vivo.com/tr/support/accessory",
+          "captured_at": "2026-08-27T14:30",
+          "api_verified_at": "2026-09-17",
+          "api_sample_url": "https://www.vivo.com/tr/support/queryPriceByProductId?id=3687"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-08-27",
+        "sample": {
+          "model": "X300 Pro",
+          "rows": [
+            {
+              "part": "Ekran (屏幕)",
+              "price": "14495TRY"
+            },
+            {
+              "part": "Anakart (主板 512G+16G)",
+              "price": "39045TRY"
+            },
+            {
+              "part": "Pil (电池)",
+              "price": "1480TRY"
+            },
+            {
+              "part": "Arka Kapak (后盖)",
+              "price": "2945TRY"
+            },
+            {
+              "part": "Ön Kamera (前摄)",
+              "price": "890TRY"
+            }
+          ]
+        },
+        "notes": "【2026-09-17 改走官方接口，同 my】regionId='tr'。土站部件名为土耳其语（Ekran=屏幕/Anakart=主板/Pil=电池/Arka Kapak=后盖/Ön Kamera=前摄）。API 实测 Y31d Anakart=11505 TRY，与旧 DOM 口径量级一致。原 DOM 路径同样有跨机型串值风险，已弃用。"
+      }
+    ],
+    "ae": [
+      {
+        "device_category": "phone",
+        "locale": "en-AE",
+        "currency": "AED",
+        "entry": {
+          "url": "https://www.vivo.com/ae/support/accessory",
+          "steps": [],
+          "expect_url": "https://www.vivo.com/ae/support/accessory"
+        },
+        "query": {
+          "mode": "vivo_api",
+          "api": {
+            "fetch_mode": "http",
+            "concurrency": 6
+          }
+        },
+        "_deprecated_dom_extract": {
+          "_reason": "2026-09-17 弃用：DOM 点选存在跨机型串值（未等表格刷新就读到上一台的行），且 /ae/en 等区域选择器命中失败返回 0 行。改为官方接口取价，见 query.mode=vivo_api。保留此块仅供回溯旧口径。",
+          "row_locator": "li.container-box-item",
+          "part_locator": ".item-left-name",
+          "price_locator": ".item-right-price"
+        },
+        "evidence": {
+          "screenshot": "references/calibration/vivo_ae_cal.png",
+          "captured_url": "https://www.vivo.com/ae/support/accessory",
+          "captured_at": "2026-08-27T14:30",
+          "api_verified_at": "2026-09-17",
+          "api_sample_url": "https://www.vivo.com/ae/en/support/queryPriceByProductId?id=3687"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-08-27",
+        "sample": {
+          "model": "X300 Pro",
+          "rows": [
+            {
+              "part": "Battery",
+              "price": "97AED"
+            },
+            {
+              "part": "Display",
+              "price": "944AED"
+            },
+            {
+              "part": "MainBoard (512G+16G)",
+              "price": "2542AED"
+            },
+            {
+              "part": "Rear Main Camera",
+              "price": "347AED"
+            },
+            {
+              "part": "USB Cable",
+              "price": "35AED"
+            }
+          ]
+        },
+        "notes": "【2026-09-17 改走官方接口】⚠️ regionId='ae/en'（带语言段），KB entry.url 的 /ae/support/accessory 会 301 到 /ae/en/support/accessory —— 这正是原 DOM 路径在此站命中失败、0 行的根因（issue #55）。现由 executor 从页面 globalVar.regionId 现读，不再按国家码拼。阿站部件名为英文。价无空格（97AED）。"
+      }
+    ],
+    "de": [
+      {
+        "device_category": "phone",
+        "locale": "de-DE",
+        "currency": "EUR",
+        "entry": {
+          "url": "https://www.vivo.com/de/support/accessory",
+          "steps": [],
+          "expect_url": "https://www.vivo.com/de/support/accessory"
+        },
+        "query": {
+          "mode": "vivo_parts_grid",
+          "select_model": true
+        },
+        "extract": {
+          "row_locator": "li.container-box-item",
+          "part_locator": ".item-left-name",
+          "price_locator": ".item-right-price"
+        },
+        "evidence": {
+          "captured_url": "https://www.vivo.com/de/support/accessory",
+          "captured_at": "2026-08-27T14:30"
+        },
+        "status": "unavailable",
+        "reviewed": true,
+        "updated_at": "2026-08-27",
+        "notes": "【已实测 2026-08-27 不可达】vivo 德国站(/de/support/accessory)无备件价查询工具，页面仅渲染 'vivo Deutschland' 主页（#boxSelectModel 不存在、无 li.select-model-item）。与 Apple tr 同理：该区域不提供公开备件价页。如未来上线，复用 my/tr/ae 的同一套选择器即可。"
+      }
+    ]
+  }
+}

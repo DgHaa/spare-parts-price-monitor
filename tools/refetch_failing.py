@@ -25,6 +25,9 @@ from crawler.model_links import norm, match_official_name  # noqa: E402
 SKILL_SCRIPTS = Path(r"C:/Users/Dong/.workbuddy/skills/spare-parts-price/scripts")
 if str(SKILL_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SKILL_SCRIPTS))
+_VENDOR = ROOT / "vendor"  # 仓库内副本优先
+if _VENDOR.exists() and str(_VENDOR) not in sys.path:
+    sys.path.insert(0, str(_VENDOR))
 from normalize import parse_amount as _parse_amount  # noqa: E402
 
 MI_CLASS_LIST = "https://api2.service.order.mi.com/repair_price/shop_class_info?keyword=&callback=CALLBACK"

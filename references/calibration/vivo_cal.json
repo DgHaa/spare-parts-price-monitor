@@ -1,0 +1,199 @@
+{
+  "results": {
+    "my": {
+      "area": "my",
+      "status": "ok",
+      "url": "https://www.vivo.com/my/support/accessory",
+      "available_models_sample": [
+        "T1x",
+        "T1 5G",
+        "S1 Pro",
+        "S1",
+        "V70 FE",
+        "V70",
+        "V60 Lite 5G",
+        "V60"
+      ],
+      "model_selected": "X300 Pro",
+      "currency": "MYR",
+      "rows": [
+        {
+          "part": "Battery",
+          "price": "RM105.00"
+        },
+        {
+          "part": "Battery Cover",
+          "price": "RM210.00"
+        },
+        {
+          "part": "Charger",
+          "price": "RM125.00"
+        },
+        {
+          "part": "Display",
+          "price": "RM1,030.00"
+        },
+        {
+          "part": "Front Camera",
+          "price": "RM65.00"
+        },
+        {
+          "part": "MainBoard (512G+16G)",
+          "price": "RM2,775.00"
+        },
+        {
+          "part": "Rear Main Camera",
+          "price": "RM380.00"
+        },
+        {
+          "part": "Rear Periscopic Camera",
+          "price": "RM525.00"
+        },
+        {
+          "part": "Rear Wide Angle Camera",
+          "price": "RM65.00"
+        },
+        {
+          "part": "USB Cable",
+          "price": "RM40.00"
+        }
+      ],
+      "row_count": 10
+    },
+    "tr": {
+      "area": "tr",
+      "status": "ok",
+      "url": "https://www.vivo.com/tr/support/accessory",
+      "available_models_sample": [
+        "USB Kablo",
+        "seyahat şarj",
+        "Y31d",
+        "Y05",
+        "Y11d",
+        "Y21 5G",
+        "Y31 5G",
+        "Y29s 5G"
+      ],
+      "model_selected": "X300 Pro",
+      "currency": "TRY",
+      "rows": [
+        {
+          "part": "Anakart (512G+16G)",
+          "price": "39045TRY"
+        },
+        {
+          "part": "Arka Ana Kamera",
+          "price": "5325TRY"
+        },
+        {
+          "part": "Arka Geniş Açı Kamera",
+          "price": "890TRY"
+        },
+        {
+          "part": "Arka Kapak",
+          "price": "2945TRY"
+        },
+        {
+          "part": "Arka Periskopik Kamera",
+          "price": "7395TRY"
+        },
+        {
+          "part": "Ekran",
+          "price": "14495TRY"
+        },
+        {
+          "part": "Ön Kamera",
+          "price": "890TRY"
+        },
+        {
+          "part": "Pil",
+          "price": "1480TRY"
+        },
+        {
+          "part": "seyahat şarj",
+          "price": "1480TRY"
+        }
+      ],
+      "row_count": 9
+    },
+    "de": {
+      "area": "de",
+      "status": "no_rows",
+      "url": "https://www.vivo.com/de/support/accessory",
+      "available_models_sample": [
+        "V70 FE",
+        "V70",
+        "V50 Lite 5G",
+        "V50 Lite",
+        "V50e",
+        "V50",
+        "V23 5G",
+        "V21 5G"
+      ],
+      "model_selected": "X300 Pro",
+      "currency": "EUR",
+      "rows": [],
+      "row_count": 0
+    },
+    "ae": {
+      "area": "ae",
+      "status": "ok",
+      "url": "https://www.vivo.com/ae/support/accessory",
+      "available_models_sample": [
+        "T1 Pro 5G",
+        "T1x",
+        "T1 5G",
+        "X300",
+        "X300 Ultra",
+        "X300 FE",
+        "X300 Pro",
+        "X200 FE"
+      ],
+      "model_selected": "X300 Pro",
+      "currency": "AED",
+      "rows": [
+        {
+          "part": "Battery",
+          "price": "97AED"
+        },
+        {
+          "part": "Battery Cover",
+          "price": "192AED"
+        },
+        {
+          "part": "Charger",
+          "price": "74AED"
+        },
+        {
+          "part": "Display",
+          "price": "944AED"
+        },
+        {
+          "part": "Front Camera",
+          "price": "58AED"
+        },
+        {
+          "part": "MainBoard (512G+16G)",
+          "price": "2542AED"
+        },
+        {
+          "part": "Rear Main Camera",
+          "price": "347AED"
+        },
+        {
+          "part": "Rear Periscopic Camera",
+          "price": "482AED"
+        },
+        {
+          "part": "Rear Wide Angle Camera",
+          "price": "58AED"
+        },
+        {
+          "part": "USB Cable",
+          "price": "35AED"
+        }
+      ],
+      "row_count": 10
+    }
+  }
+}

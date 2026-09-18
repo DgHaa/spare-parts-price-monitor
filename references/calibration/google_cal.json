@@ -1,0 +1,40 @@
+{
+  "captured_at": "2026-08-29T14:27:47",
+  "results": {
+    "de": {
+      "area": "de",
+      "currency": "EUR",
+      "url": "https://store.google.com/de/repair-cost-estimator?hl=de",
+      "outcome": "error",
+      "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://store.google.com/de/repair-cost-estimator?hl=de\", waiting until \"commit\"\n"
+    },
+    "jp": {
+      "area": "jp",
+      "currency": "JPY",
+      "url": "https://store.google.com/jp/repair-cost-estimator?hl=ja",
+      "outcome": "error",
+      "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://store.google.com/jp/repair-cost-estimator?hl=ja\", waiting until \"commit\"\n"
+    },
+    "ae": {
+      "area": "ae",
+      "currency": "AED",
+      "url": "https://store.google.com/ae/repair-cost-estimator?hl=en",
+      "outcome": "error",
+      "error": "Page.goto: net::ERR_CONNECTION_TIMED_OUT at https://store.google.com/ae/repair-cost-estimator?hl=en\nCall log:\n  - navigating to \"https://store.google.com/ae/repair-cost-estimator?hl=en\", waiting until \"commit\"\n"
+    },
+    "my": {
+      "area": "my",
+      "currency": "MYR",
+      "url": "https://store.google.com/my/repair-cost-estimator?hl=en",
+      "outcome": "error",
+      "error": "Page.goto: net::ERR_CONNECTION_TIMED_OUT at https://store.google.com/my/repair-cost-estimator?hl=en\nCall log:\n  - navigating to \"https://store.google.com/my/repair-cost-estimator?hl=en\", waiting until \"commit\"\n"
+    },
+    "tr": {
+      "area": "tr",
+      "currency": "TRY",
+      "url": "https://store.google.com/tr/repair-cost-estimator?hl=tr",
+      "outcome": "error",
+      "error": "Page.goto: net::ERR_CONNECTION_TIMED_OUT at https://store.google.com/tr/repair-cost-estimator?hl=tr\nCall log:\n  - navigating to \"https://store.google.com/tr/repair-cost-estimator?hl=tr\", waiting until \"commit\"\n"
+    }
+  }
+}

@@ -19,7 +19,10 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-KB = Path(r"C:/Users/Dong/.workbuddy/skills/spare-parts-price/references/kb/oppo.json")
+# KB 位置：优先仓库内副本 references/kb（已随仓库同步），缺失时回退到 skill 目录
+_REPO_KB = Path(__file__).resolve().parents[1] / "references" / "kb" / "oppo.json"
+KB = _REPO_KB if _REPO_KB.exists() else Path(
+    r"C:/Users/Dong/.workbuddy/skills/spare-parts-price/references/kb/oppo.json")
 ALL_HOSTS = ["sow-cms.oppo.com", "par-sow-cms.oppo.com", "sgp-sow-cms.oppo.com"]
 REG = {
     "de": ("par-sow-cms.oppo.com", "DE", "de", "de-DE", "EUR"),

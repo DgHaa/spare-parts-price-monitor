@@ -1,0 +1,283 @@
+{
+  "brand": "samsung",
+  "countries": {
+    "de": [
+      {
+        "device_category": "phone",
+        "locale": "de-DE",
+        "currency": "EUR",
+        "entry": {
+          "url": "https://www.samsung.com/de/support/",
+          "steps": [
+            {
+              "act": "click",
+              "sel": "text=支持",
+              "alt": "[aria-label*=Support]"
+            },
+            {
+              "act": "click",
+              "sel": "text=维修与保修"
+            },
+            {
+              "act": "click",
+              "sel": "text=维修费用"
+            },
+            {
+              "act": "wait",
+              "until": "url_contains:smart-repair-service",
+              "timeout": 8000
+            }
+          ],
+          "expect_url": "https://www.samsung.com/de/support/smart-repair-service/"
+        },
+        "query": {
+          "mode": "samsung_api",
+          "api": {
+            "type": "rest_v3graph",
+            "base": "https://seg.apix.de/smart-repair/v3-graph/",
+            "currency": "EUR",
+            "phone_type_name": "Smartphones",
+            "device_types": [
+              "Smartphones",
+              "Tablets",
+              "Wearables"
+            ]
+          }
+        },
+        "extract": {
+          "table_locator": "section:has-text('推荐维修费用') table",
+          "cols": {
+            "model": "型号",
+            "part": "部件",
+            "price": "价格"
+          }
+        },
+        "evidence": {
+          "screenshot": "",
+          "captured_url": "",
+          "captured_at": ""
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-09-18",
+        "notes": "自愈修复（2026-09-03）：底层价表由 seg.apix.de/smart-repair/v3-graph/ REST 提供（DeviceType→Series→Model→Model/{guid}.repairCosts），无需浏览器。已新增 crawler/samsung_api.py 的 samsung_api 模式（服务端 HTTP 直采，绕开无头拿不到的交互式估价器 + 缺失的 Playwright）。实测 Galaxy S26+ 512GB：屏幕 €245 / 电池 €86 / 摄像头接口 €129。部件名已德→中归一（屏幕/电池/后盖/摄像头/充电口）。source_url_kind=brand_entry。 【2026-09-18 扩品类】DeviceType/GetAll 实际返回 4 类：Smartphones(191)/Tablets(134)/Wearables(55)/Notebooks(未收)。原实现只取 Smartphones 一类，现按全品类口径收前三类（Notebooks 与小米电脑办公只收平板同理排除：笔记本不是手机备件比价的参照系）。品类以机型名优先判（Watch→watch/Buds→earbuds），类型兜底。"
+      }
+    ],
+    "tr": [
+      {
+        "device_category": "phone",
+        "locale": "tr-TR",
+        "currency": "TRY",
+        "entry": {
+          "url": "https://www.samsung.com/tr/support/",
+          "steps": [
+            {
+              "act": "click",
+              "sel": "text=支持",
+              "alt": "[aria-label*=Destek]"
+            },
+            {
+              "act": "click",
+              "sel": "text=维修与保修"
+            },
+            {
+              "act": "click",
+              "sel": "text=维修费用"
+            },
+            {
+              "act": "wait",
+              "until": "url_contains:ekran-degisimi-fiyat-bilgisi",
+              "timeout": 8000
+            }
+          ],
+          "expect_url": "https://www.samsung.com/tr/support/ekran-degisimi-fiyat-bilgisi/"
+        },
+        "query": {
+          "mode": "samsung_api",
+          "api": {
+            "type": "tr_static_table",
+            "note": "服务端解析 /tr/support/repair-prices/ 的 SSR 表格（同 AE 套路），不需要浏览器"
+          }
+        },
+        "evidence": {
+          "screenshot": "",
+          "captured_url": "",
+          "captured_at": "",
+          "api_verified_at": "2026-09-17",
+          "api_sample_url": "https://www.samsung.com/tr/support/repair-prices/"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-09-17",
+        "notes": "【2026-09-17 改走服务端 HTML 表】土站 /tr/support/repair-prices/ 服务端渲染 6 张 table：#0~#3=机型级屏幕维修价（表头 Model Kodu/Model Adı + 各屏幕维修方式列 + Çerçeve Onarımı 中框），按**表头文字**映射列（表#3 只有一列，按下标会错）。⚠️ table#4 [Seri,Ücret]=**系列级统一费用**（Galaxy S Serisi ₺3.100），不是备件价——旧 DOM 口径把它当机型表抓，库里因此出现机型名=Galaxy S Serisi、部件名=Ücret 的垃圾行，已在 fetch_tr 中显式排除。⚠️ table#5 Galaxy Ring 穿戴同排除（与 fetch_ae 只收手机同口径）。金额用 . 作千分位（₺14.300=14300），交给 normalize.parse_amount 判定。"
+      }
+    ],
+    "my": [
+      {
+        "device_category": "phone",
+        "locale": "ms-MY",
+        "currency": "MYR",
+        "entry": {
+          "url": "https://www.samsung.com/my/support/",
+          "steps": [
+            {
+              "act": "click",
+              "sel": "text=支持",
+              "alt": "[aria-label*=Support]"
+            },
+            {
+              "act": "click",
+              "sel": "text=维修与保修"
+            },
+            {
+              "act": "click",
+              "sel": "text=维修费用"
+            },
+            {
+              "act": "wait",
+              "until": "url_contains:repair-cost",
+              "timeout": 8000
+            }
+          ],
+          "expect_url": "https://www.samsung.com/my/support/repair-cost/"
+        },
+        "query": {
+          "mode": "samsung_api",
+          "api": {
+            "type": "azure_estimator",
+            "base": "https://my-repair-cost-estimator-api-11661-prd.azurewebsites.net",
+            "currency": "MYR",
+            "all_endpoint": "/api/all",
+            "symptoms_endpoint": "/api/symptoms?productId=",
+            "estimate_endpoint": "/api/estimate",
+            "phone_subcategory_id": 1,
+            "extra_subcategory_ids": [
+              10
+            ]
+          }
+        },
+        "extract": {
+          "table_locator": "section:has-text('维修费用') table",
+          "cols": {
+            "model": "型号",
+            "part": "部件",
+            "price": "价格"
+          }
+        },
+        "evidence": {
+          "screenshot": "",
+          "captured_url": "",
+          "captured_at": ""
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-09-18",
+        "notes": "自愈修复（2026-09-03）：my 站估价器走独立 Azure API（my-repair-cost-estimator-api-11661-prd.azurewebsites.net）：/api/all 过滤 subcategoriesId=1(手机) → /api/symptoms?productId= → POST /api/estimate 取价。已用 samsung_api 模式直采，实测 Galaxy A34 128GB：电池 RM243 / 后盖 RM271 / 摄像头 RM543。部件名英→中归一。source_url_kind=brand_entry。 【2026-09-18 扩品类】/api/all 的 subcategoriesId：1=手机(79,在收) / 2=电视(183) / 3=冰箱(57) / 4=洗衣机(11) / 9=空调(44) / 10=Galaxy Ring(1)。按全品类口径追加 10=Galaxy Ring（穿戴）；电视与大家电不收（不是手机备件比价的参照系）。注意：大马站官方**没有平板和手表**价表，与 ae/jp 覆盖不同——这是官方不提供，不是我们过滤。"
+      }
+    ],
+    "jp": [
+      {
+        "device_category": "phone",
+        "locale": "ja-JP",
+        "currency": "JPY",
+        "entry": {
+          "url": "https://www.samsung.com/jp/support/mobile-devices/please-tell-us-about-the-repair-cost-of-the-galaxy-device/"
+        },
+        "evidence": {
+          "screenshot": "",
+          "captured_url": "",
+          "captured_at": "",
+          "api_verified_at": "2026-09-18",
+          "api_sample_url": "https://www.samsung.com/jp/support/mobile-devices/please-tell-us-about-the-repair-cost-of-the-galaxy-device/"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-09-18",
+        "notes": "【2026-09-18 改走服务端 HTML 表】该页服务端渲染 6 张 table，表头均以 Model 开头：#0=手机(ディスプレイ交換/バッテリー交換/メイン基板交換 ×～256GB,512GB,1TB)、#1=平板(Tab)、#2=耳机(Buds)、#3=手表(Watch)、#4=Galaxy Fit、#5=Galaxy Ring。⚠️ #1/#3 的列名与手机表**几乎完全相同**，光靠表头无法区分 → 必须按机型名+表索引判品类，否则手表的「メイン基板交換」会以「主板」之名混进手机的「主板」比价列（层级错配，与 TR 的 table#4 同类）。⚠️ 排除正则不能写 \\bWatch\\b：Galaxy Watch4 的 h 与 4 都是词字符，中间无边界会漏网。价形如 ¥14,630 ～（～=官网区间下界/起价），- 表示无此规格；日元无小数，直接 parse_amount。【口径 2026-09-18 用户确认】**6 张表全收**（官方价表里出现的品类都要，含平板/手表/耳机/手环/戒指），与 OPPO 既有口径一致（OPPO 官方页本来就含 Pad/Watch/Buds/手环/智能电视）。每行标 models.category，比价矩阵按品类分组（平板屏幕 ≠ 手机屏幕，不可混比）。⚠️ 一格可能挤多个机型名（Galaxy Tab S6 Lite (Wi-Fi) Galaxy Tab S6 Lite 2024 (Wi-Fi)）→ 必须拆分，整串落库会得到一条谁都对不上的垃圾机型。结果：71 台 / 215 行（phone21 / tablet17 / earbuds6 / watch25 / wearable2）。",
+        "_deprecated_dom_extract": {
+          "table_locator": "section:has-text('维修费用') table",
+          "cols": {
+            "model": "型号",
+            "part": "部件",
+            "price": "价格"
+          },
+          "_reason": "已弃用：extract.cols 写的是中文表头(型号/部件/价格)，日站是日语页面，选择器不可能命中；且 entry.steps 用 text=支持/维修费用 等中文案，跳转后 Page.goto 超时+元素不可见 → 自动发现 0 机型(issue #57)。"
+        },
+        "_deprecated_dom_query": {
+          "mode": "samsung_repair_table",
+          "select_product_type": true,
+          "part_modules": [
+            "屏幕",
+            "电池",
+            "主板",
+            "摄像头"
+          ],
+          "_reason": "原 samsung_repair_table（Playwright 点选），已由 jp_static_table 取代。"
+        },
+        "query": {
+          "mode": "samsung_api",
+          "api": {
+            "type": "jp_static_table",
+            "note": "服务端解析 /jp/support/mobile-devices/please-tell-us-about-the-repair-cost-of-the-galaxy-device/ 的 SSR 表格，不需要浏览器"
+          }
+        }
+      }
+    ],
+    "ae": [
+      {
+        "device_category": "phone",
+        "locale": "en-AE",
+        "currency": "AED",
+        "entry": {
+          "url": "https://www.samsung.com/ae/support/",
+          "steps": [
+            {
+              "act": "click",
+              "sel": "text=支持",
+              "alt": "[aria-label*=Support]"
+            },
+            {
+              "act": "click",
+              "sel": "text=维修与保修"
+            },
+            {
+              "act": "click",
+              "sel": "text=修理价格"
+            },
+            {
+              "act": "wait",
+              "until": "url_contains:repair-prices",
+              "timeout": 8000
+            }
+          ],
+          "expect_url": "https://www.samsung.com/ae/support/repair-prices/"
+        },
+        "query": {
+          "mode": "samsung_api",
+          "api": {
+            "type": "ae_static_table",
+            "url": "https://www.samsung.com/ae/support/repair-prices/",
+            "currency": "AED"
+          }
+        },
+        "extract": {
+          "table_locator": "table",
+          "cols": {
+            "model": "型号",
+            "part": "部件",
+            "price": "价格"
+          }
+        },
+        "evidence": {
+          "screenshot": "",
+          "captured_url": "https://www.samsung.com/ae/support/repair-prices/",
+          "captured_at": "2026-09-04"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-09-18",
+        "notes": "自愈修复（2026-09-04）：AE Gulf 维修页 /support/repair-prices/ 服务端渲染完整价表（内嵌 JSON models 数组 + 折叠屏 HTML 表），无独立 API、无头被区域门控挡成 0 表格。改用 crawl/samsung_api.py 的 ae_static_table 模式服务端直采：标准机型取 replacement(屏幕)/battery(电池)/backCover(后盖)，折叠屏 Fold/Flip 取主屏/外屏。实测 Galaxy A55 5G：屏幕 AED484 / 电池 AED296 / 后盖 AED220。source_url_kind=brand_entry。 【2026-09-18 品类口径确认】库内 ae = phone 25 + tablet 30，共 55 台/88 行。⚠️ fetch_ae 的过滤条件只有 dev.startswith(\"Galaxy\")，挡掉的是电视/充电座等不以 Galaxy 命名的条目；**Galaxy Tab / Galaxy Watch 都会通过**（30 台平板即由此而来）。故「ae 库里没有手表/耳机」应判定为**官方该页未列**，不是被我们过滤——与 my 站同理。⚠️ 该页在 2026-09-18 跑批成功后，后续手工复查连续超时（urllib 3×25s + 浏览器 90s 均超时，疑限流），如需再确认手表覆盖请换时段重试，勿据此判定页面失效。"
+      }
+    ]
+  }
+}

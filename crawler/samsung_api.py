@@ -37,13 +37,19 @@ from db import (init_db, fetch_rates, this_quarter, upsert_brand, upsert_country
                normalize_base_model, extract_spec, extract_color, classify_tier,
                log_run, add_issue, model_already_captured, guess_category)
 
-SKILL_KB = Path(r"C:/Users/Dong/.workbuddy/skills/spare-parts-price/references/kb")
+# KB 位置：优先仓库内副本 references/kb（已随仓库同步），缺失时回退到 skill 目录
+_REPO_KB = Path(__file__).resolve().parents[1] / "references" / "kb"
+SKILL_KB = _REPO_KB if (_REPO_KB / "samsung.json").exists() else Path(
+    r"C:/Users/Dong/.workbuddy/skills/spare-parts-price/references/kb")
 # 金额解析统一走 skill 的 normalize.parse_amount：各国 `.`/`,` 含义相反
 # （德语 `488,99`=488.99，美式 `1,299`=1299），重复实现过 `replace(",","")`
 # 导致德语小数逗号被当千分位吃掉、价格放大 100 倍。此处不再自行解析。
 SKILL_SCRIPTS = Path(r"C:/Users/Dong/.workbuddy/skills/spare-parts-price/scripts")
 if str(SKILL_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SKILL_SCRIPTS))
+_VENDOR = Path(__file__).resolve().parents[1] / "vendor"  # 仓库内副本优先
+if _VENDOR.exists() and str(_VENDOR) not in sys.path:
+    sys.path.insert(0, str(_VENDOR))
 from normalize import parse_amount as _parse_amount  # noqa: E402
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
       "Accept": "application/json"}

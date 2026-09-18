@@ -1,0 +1,357 @@
+{
+  "captured_at": "2026-08-27T14:19:46",
+  "results": {
+    "de": {
+      "status": "ok",
+      "found": true,
+      "heading": "Geschätzte Servicekosten",
+      "rows": [
+        {
+          "label": "AppleCare- Serviceoptionen",
+          "price": "Wir helfen dir gerne weiter."
+        },
+        {
+          "label": "iPhone Air",
+          "price": "iPhone 17"
+        },
+        {
+          "label": "",
+          "price": "iPhone 16"
+        },
+        {
+          "label": "",
+          "price": "iPhone 15"
+        },
+        {
+          "label": "",
+          "price": "iPhone 14"
+        },
+        {
+          "label": "",
+          "price": "iPhone 13"
+        },
+        {
+          "label": "",
+          "price": "iPhone 12"
+        },
+        {
+          "label": "",
+          "price": "iPhone 11"
+        },
+        {
+          "label": "Gerätetyp",
+          "price": "iPhone 16 Pro Max"
+        },
+        {
+          "label": "",
+          "price": "iPhone 16 Pro"
+        },
+        {
+          "label": "",
+          "price": "iPhone 16 Plus"
+        },
+        {
+          "label": "",
+          "price": "iPhone 16"
+        },
+        {
+          "label": "",
+          "price": "iPhone 16e"
+        },
+        {
+          "label": "Batterieservice",
+          "price": "€135"
+        },
+        {
+          "label": "Rückglasschaden",
+          "price": "€169"
+        },
+        {
+          "label": "Schaden an der Rückkamera",
+          "price": "€299"
+        },
+        {
+          "label": "Displayschaden",
+          "price": "€488,99"
+        },
+        {
+          "label": "Schaden an Display und Rückglas",
+          "price": "€585"
+        },
+        {
+          "label": "Sonstiger Schaden",
+          "price": "€899"
+        }
+      ],
+      "screenshot": "apple_de_cal.png",
+      "model_selected": "iPhone 16 Pro Max",
+      "url": "https://support.apple.com/de-de/iphone/repair?services=service",
+      "currency": "EUR"
+    },
+    "jp": {
+      "status": "ok",
+      "found": true,
+      "heading": "料金は？",
+      "rows": [
+        {
+          "label": "iPhone Air",
+          "price": "iPhone 17"
+        },
+        {
+          "label": "",
+          "price": "iPhone 16"
+        },
+        {
+          "label": "",
+          "price": "iPhone 15"
+        },
+        {
+          "label": "",
+          "price": "iPhone 14"
+        },
+        {
+          "label": "",
+          "price": "iPhone 13"
+        },
+        {
+          "label": "",
+          "price": "iPhone 12"
+        },
+        {
+          "label": "",
+          "price": "iPhone 11"
+        },
+        {
+          "label": "デバイスの種類",
+          "price": "iPhone 16 Pro Max"
+        },
+        {
+          "label": "",
+          "price": "iPhone 16 Pro"
+        },
+        {
+          "label": "",
+          "price": "iPhone 16 Plus"
+        },
+        {
+          "label": "",
+          "price": "iPhone 16"
+        },
+        {
+          "label": "",
+          "price": "iPhone 16e"
+        },
+        {
+          "label": "バッテリー修理",
+          "price": "21,000円"
+        },
+        {
+          "label": "背面ガラスの損傷",
+          "price": "27,800円"
+        },
+        {
+          "label": "背面カメラの損傷",
+          "price": "43,800円"
+        },
+        {
+          "label": "画面の損傷",
+          "price": "64,800円"
+        },
+        {
+          "label": "画面および背面ガラスの損傷",
+          "price": "80,600円"
+        },
+        {
+          "label": "その他の損傷",
+          "price": "133,800円"
+        }
+      ],
+      "screenshot": "apple_jp_cal.png",
+      "model_selected": "iPhone 16 Pro Max",
+      "url": "https://support.apple.com/ja-jp/iphone/repair?services=service",
+      "currency": "JPY"
+    },
+    "ae": {
+      "status": "ok",
+      "found": true,
+      "heading": "Estimated service cost",
+      "rows": [
+        {
+          "label": "iPhone Air",
+          "price": "iPhone 17"
+        },
+        {
+          "label": "",
+          "price": "iPhone 16"
+        },
+        {
+          "label": "",
+          "price": "iPhone 15"
+        },
+        {
+          "label": "",
+          "price": "iPhone 14"
+        },
+        {
+          "label": "",
+          "price": "iPhone 13"
+        },
+        {
+          "label": "",
+          "price": "iPhone 12"
+        },
+        {
+          "label": "",
+          "price": "iPhone 11"
+        },
+        {
+          "label": "Device Type",
+          "price": "iPhone 16 Pro Max"
+        },
+        {
+          "label": "",
+          "price": "iPhone 16 Pro"
+        },
+        {
+          "label": "",
+          "price": "iPhone 16 Plus"
+        },
+        {
+          "label": "",
+          "price": "iPhone 16"
+        },
+        {
+          "label": "",
+          "price": "iPhone 16e"
+        },
+        {
+          "label": "Battery service",
+          "price": "AED 465"
+        },
+        {
+          "label": "Back glass damage",
+          "price": "AED 615"
+        },
+        {
+          "label": "Rear camera damage",
+          "price": "AED 989"
+        },
+        {
+          "label": "Screen damage",
+          "price": "AED 1,499"
+        },
+        {
+          "label": "Screen and back glass damage",
+          "price": "AED 1,849"
+        },
+        {
+          "label": "Other damage",
+          "price": "AED 2,899"
+        },
+        {
+          "label": "",
+          "price": "It’s private."
+        },
+        {
+          "label": "Apple cares about your privacy, and we design our products to minimize how much of your data we — or anyone else — can access, including our expert technicians.",
+          "price": "It’s backed by Apple."
+        }
+      ],
+      "screenshot": "apple_ae_cal.png",
+      "model_selected": "iPhone 16 Pro Max",
+      "url": "https://support.apple.com/en-ae/iphone/repair?services=service",
+      "currency": "AED"
+    },
+    "my": {
+      "status": "ok",
+      "found": true,
+      "heading": "Estimated service cost",
+      "rows": [
+        {
+          "label": "iPhone Air",
+          "price": "iPhone 17"
+        },
+        {
+          "label": "",
+          "price": "iPhone 16"
+        },
+        {
+          "label": "",
+          "price": "iPhone 15"
+        },
+        {
+          "label": "",
+          "price": "iPhone 14"
+        },
+        {
+          "label": "",
+          "price": "iPhone 13"
+        },
+        {
+          "label": "",
+          "price": "iPhone 12"
+        },
+        {
+          "label": "",
+          "price": "iPhone 11"
+        },
+        {
+          "label": "Device Type",
+          "price": "iPhone 16 Pro Max"
+        },
+        {
+          "label": "",
+          "price": "iPhone 16 Pro"
+        },
+        {
+          "label": "",
+          "price": "iPhone 16 Plus"
+        },
+        {
+          "label": "",
+          "price": "iPhone 16"
+        },
+        {
+          "label": "",
+          "price": "iPhone 16e"
+        },
+        {
+          "label": "Battery service",
+          "price": "RM 549"
+        },
+        {
+          "label": "Back glass damage",
+          "price": "RM 729"
+        },
+        {
+          "label": "Rear camera damage",
+          "price": "RM 1,099"
+        },
+        {
+          "label": "Screen damage",
+          "price": "RM 1,799"
+        },
+        {
+          "label": "Screen and back glass damage",
+          "price": "RM 2,199"
+        },
+        {
+          "label": "Other damage",
+          "price": "RM 3,499"
+        },
+        {
+          "label": "",
+          "price": "It’s private."
+        },
+        {
+          "label": "Apple cares about your privacy, and we design our products to minimise how much of your data we – or anyone else – can access, including our expert technicians.",
+          "price": "It’s backed by Apple."
+        }
+      ],
+      "screenshot": "apple_my_cal.png",
+      "model_selected": "iPhone 16 Pro Max",
+      "url": "https://support.apple.com/en-my/iphone/repair?services=service",
+      "currency": "MYR"
+    }
+  }
+}
