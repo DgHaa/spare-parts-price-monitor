@@ -5,15 +5,16 @@
    从沙箱 000 不可达（数据中心 IP 被 Google 限流/地理封锁，curl/WebFetch 均超时）。
    同样，在中国大陆 Google 被墙，本机直连也会 000 —— 必须挂代理/VPN 才能跑通。
 
-真实路径（无需 cd，直接带全路径运行）：
-  技能目录 = C:\\Users\\Dong\\.workbuddy\\skills\\spare-parts-price
-  可直接运行：
-    python "C:\\Users\\Dong\\.workbuddy\\skills\\spare-parts-price\\references\\calibration\\google_calibrate.py"
-  或先进入目录再运行：
-    cd /d C:\\Users\\Dong\\.workbuddy\\skills\\spare-parts-price\\references\\calibration
+真实路径（全部相对，仓库可整体搬迁）：
+
+    cd <仓库根>/references/calibration
     pip install playwright && playwright install chromium
     python google_calibrate.py                # 默认校准全部 5 国并自动写回 KB
     # 或仅指定区域： python google_calibrate.py --regions de jp
+
+  Chromium 位置无需配置：优先读环境变量 PLAYWRIGHT_CHROMIUM_PATH，
+  其次扫描 %LOCALAPPDATA%/ms-playwright/chromium-*/chrome-win64/chrome.exe，
+  都没有则直接用 Playwright 自带的 Chromium（见 _paths.find_chromium）。
 
 代理支持（自动读取，无需改代码）：
   优先级 1：环境变量 HTTPS_PROXY/HTTP_PROXY/ALL_PROXY（见下）。
@@ -46,12 +47,12 @@
 import argparse
 import json
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-KB_DIR = HERE.parent / "kb"
-EVIDENCE_DIR = HERE.parent.parent / "output" / "evidence"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import EVIDENCE_DIR, KB_DIR, HERE, ensure_evidence  # noqa: E402
 
 REGIONS = {
     "de": ("https://store.google.com/de/repair-cost-estimator?hl=de", "de-DE", "EUR"),

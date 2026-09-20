@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
-import json, re
-CHROME = r"C:\Users\Dong\AppData\Local\ms-playwright\chromium-1234\chrome-win64\chrome.exe"
+"""xiaomi_calibrate.py - 小米备件价格页校准（截图落在 output/evidence/）。"""
+import json, re, sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import ensure_evidence, find_chromium  # noqa: E402
+
+CHROME = find_chromium()          # None -> 用 Playwright 自带 Chromium
 URL = "https://www.mi.com/service/materialprice"
 async def main():
     from playwright.async_api import async_playwright
@@ -32,7 +38,7 @@ async def main():
                 const all=[...document.querySelectorAll('[class*=repair],[class*=material],[class*=price-detail],[class*=part],[class*=detail]')];
                 return all.slice(0,6).map(e=>({cls:e.className+'', txt:(e.innerText||'').trim().slice(0,300)}));
             }""")
-            await pg.screenshot(path="xiaomi_cal3.png", full_page=True)
+            await pg.screenshot(path=str(ensure_evidence() / "xiaomi_cal3.png"), full_page=True)
         except Exception as e:
             out["error"] = str(e)[:300]
         await b.close()

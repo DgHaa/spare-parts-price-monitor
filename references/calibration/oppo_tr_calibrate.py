@@ -25,8 +25,11 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-PY = r"C:\Users\Dong\.workbuddy\binaries\python\envs\default\Scripts\python.exe"
-CHROME = r"C:\Users\Dong\AppData\Local\ms-playwright\chromium-1234\chrome-win64\chrome.exe"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import ensure_evidence, find_chromium  # noqa: E402
+
+CHROME = find_chromium()          # None -> 用 Playwright 自带 Chromium
+HERE = Path(__file__).resolve().parent
 URL = "https://support.oppo.com/tr/spare-parts-price/"
 
 
@@ -117,15 +120,17 @@ async def main(model=None, out=None):
 def run():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default=None)
-    ap.add_argument("--out", default="oppo_tr_api.json")
+    ap.add_argument("--out", default=str(HERE / "oppo_tr_api.json"))
     args = ap.parse_args()
 
     import asyncio
     res = asyncio.run(main(args.model, args.out))
     print(json.dumps(res, ensure_ascii=False, indent=2))
     if args.out and res.get("status") == "ok":
-        Path(args.out).write_text(json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"\nsaved -> {args.out}")
+        out = Path(args.out)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"\nsaved -> {out}")
     if res.get("status") != "ok":
         sys.exit(1)
 

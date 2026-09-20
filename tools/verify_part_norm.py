@@ -6,9 +6,10 @@ canonical_spec) 的多条原文价，最高/最低 > 3 倍 —— 说明把不�
 import sqlite3
 import sys
 from collections import defaultdict
+from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
-DB = r"C:\Users\Dong\spare-parts-monitor\spare_parts.db"
+DB = str(Path(__file__).resolve().parents[1] / "spare_parts.db")
 c = sqlite3.connect(DB)
 
 print("=" * 78)

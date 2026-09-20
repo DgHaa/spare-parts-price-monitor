@@ -9,7 +9,11 @@ import argparse, json, sys, re
 from datetime import datetime
 from pathlib import Path
 
-CHROME = r"C:\Users\Dong\AppData\Local\ms-playwright\chromium-1234\chrome-win64\chrome.exe"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import ensure_evidence, find_chromium  # noqa: E402
+
+CHROME = find_chromium()          # None -> 用 Playwright 自带 Chromium
+HERE = Path(__file__).resolve().parent
 REGIONS = {
     "de": ("https://support.apple.com/de-de/iphone/repair", "de-DE", "EUR", "iPhone 16"),
     "jp": ("https://support.apple.com/ja-jp/iphone/repair", "ja-JP", "JPY", "iPhone 16"),
@@ -55,9 +59,10 @@ async def calibrate(page, area, url, locale, device):
             if(/Servicekosten|Service costs|見積もりの|見積|التكلف|估计的|Estim|料金|費用/i.test(t) && t.length<40){head=t;break;}}
         return {found:rows.length>0, heading:head, rows};
     }""")
-    shot = f"apple_{area}_cal.png"
+    ev = ensure_evidence()
+    shot = str(ev / f"apple_{area}_cal.png")
     await page.screenshot(path=shot)
-    data["screenshot"] = shot
+    data["screenshot"] = f"output/evidence/apple_{area}_cal.png"
     data["model_selected"] = first_model
     data["url"] = page.url
     return data
@@ -82,11 +87,16 @@ async def main(out):
         await b.close()
     doc = {"captured_at": datetime.now().isoformat(timespec="seconds"), "results": results}
     if out:
-        Path(out).write_text(json.dumps(doc, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"saved -> {out}")
+        op = Path(out)
+        op.parent.mkdir(parents=True, exist_ok=True)
+        op.write_text(json.dumps(doc, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"saved -> {op}")
     return doc
 
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(); ap.add_argument("--out", default="apple_cal.json"); args = ap.parse_args()
-    import asyncio; asyncio.run(main(args.out))
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out", default=str(HERE / "apple_cal.json"))
+    args = ap.parse_args()
+    import asyncio
+    asyncio.run(main(args.out))

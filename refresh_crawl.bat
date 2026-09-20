@@ -1,6 +1,10 @@
 @echo off
 chcp 65001 >nul
-cd /d C:\Users\Dong\spare-parts-monitor
+:: 仓库可整体搬迁：根目录由本文件位置推导，Python 走 PATH
+:: 若本机 python 不是带依赖的那个，可设置 PY_EXE 覆盖，例如：
+::     set PY_EXE=C:\path\to\python.exe
+cd /d "%~dp0"
+if not defined PY_EXE set "PY_EXE=python"
 
 echo ============================================
 echo  备件价格中台 - 刷新后端 + 重新抓取真实数据
@@ -18,11 +22,11 @@ timeout /t 2 >nul
 ::        set HTTPS_PROXY=http://127.0.0.1:7890
 ::        set HTTP_PROXY=http://127.0.0.1:7890
 echo [2/3] 开始全量抓取真实备件价格（可能需要数分钟）...
-C:\Users\Dong\AppData\Local\Programs\Python\Python312\python.exe -m crawler.run
+"%PY_EXE%" -m crawler.run
 
 :: 3) 重启后端（后台运行，不阻塞）
 echo [3/3] 启动最新版后端 ...
-start "" C:\Users\Dong\AppData\Local\Programs\Python\Python312\python.exe api/server.py
+start "" "%PY_EXE%" api/server.py
 
 echo.
 echo 完成！请在浏览器刷新预览面板（http://localhost:8000 由 Web 预览代理转发）。

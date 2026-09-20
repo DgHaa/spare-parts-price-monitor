@@ -4,7 +4,14 @@
 #       -> 渲染 li.container-box-item 行，含 .item-left-name(部件) + .item-right-price(价格)
 # 用法: python vivo_calibrate.py --out vivo_cal.json
 import json, argparse, asyncio
-CHROME = r"C:\Users\Dong\AppData\Local\ms-playwright\chromium-1234\chrome-win64\chrome.exe"
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import ensure_evidence, find_chromium  # noqa: E402
+
+CHROME = find_chromium()          # None -> 用 Playwright 自带 Chromium
+HERE = Path(__file__).resolve().parent
 REGIONS = {
     "my": {"url": "https://www.vivo.com/my/support/accessory", "currency": "MYR", "lang": "ms"},
     "tr": {"url": "https://www.vivo.com/tr/support/accessory", "currency": "TRY", "lang": "tr"},
@@ -85,7 +92,7 @@ async def run_region(area, info):
             out["rows"] = rows
             out["row_count"] = len(rows)
             out["status"] = "ok" if rows else "no_rows"
-            await pg.screenshot(path=f"vivo_{area}_cal.png")
+            await pg.screenshot(path=str(ensure_evidence() / f"vivo_{area}_cal.png"))
         except Exception as e:
             out["error"] = str(e)[:300]
         await b.close()
@@ -93,7 +100,7 @@ async def run_region(area, info):
 
 async def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default="vivo_cal.json")
+    ap.add_argument("--out", default=str(HERE / "vivo_cal.json"))
     args = ap.parse_args()
     results = {}
     for area, info in REGIONS.items():

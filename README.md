@@ -42,8 +42,12 @@ set HTTPS_PROXY=http://127.0.0.1:7890      :: 或开启 Clash「系统代理」�
 ```
 
 ## 3. 跑抓取（本机）
+
+> 下文所有路径均以 `<仓库目录>` 代称（即 clone 下来的 `spare-parts-price-monitor` 目录），
+> 仓库可放在任意位置。
+
 ```bat
-cd C:\Users\Dong\spare-parts-monitor
+cd /d <仓库目录>
 python -m crawler.run                 :: 全量(分批/断点续跑)
 python -m crawler.run --brand oppo --country my   :: 单品牌单国调试
 ```
@@ -73,12 +77,12 @@ python -m crawler.run         :: 真实抓取（覆盖演示数据）
 建一个 `run_quarterly.bat`：
 ```bat
 @echo off
-cd /d C:\Users\Dong\spare-parts-monitor
+cd /d "%~dp0"                    :: 根目录由 bat 自身位置推导
 python run_quarterly.py >> quarterly.log 2>&1
 ```
-注册（每 3 个月 1 号 03:00）：
+注册（每 3 个月 1 号 03:00，把 `<仓库目录>` 换成实际路径）：
 ```bat
-schtasks /create /tn "SparePartsQuarterly" /tr "C:\Users\Dong\spare-parts-monitor\run_quarterly.bat" /sc MONTHLY /mo 3 /d 1 /st 03:00
+schtasks /create /tn "SparePartsQuarterly" /tr "<仓库目录>\run_quarterly.bat" /sc MONTHLY /mo 3 /d 1 /st 03:00
 ```
 
 ## 数据视图
@@ -157,3 +161,16 @@ skill 侧若有更新，执行 `python tools/sync_skill_deps.py` 回灌（`--che
 
 唯一仍需 skill 目录的是 `executor.py`（浏览器抓取执行器，1442 行，随 skill 迭代），
 由 `crawler/core.py` 注入 `sys.path`；缺失时抓取步骤会报 `ModuleNotFoundError: executor`。
+
+### 路径解析（无机器相关硬编码）
+标定脚本不再写死任何绝对路径，全部由 `references/calibration/_paths.py` 推导：
+
+| 名称 | 指向 |
+| --- | --- |
+| `KB_DIR` | `references/kb/` |
+| `OUTPUT_DIR` / `EVIDENCE_DIR` | `output/` 与 `output/evidence/`（截图等取证产物） |
+
+需要的外部可执行程序按以下优先级寻找，**都不写死路径**：
+
+- **Chromium**：① 环境变量 `PLAYWRIGHT_CHROMIUM_PATH` → ② `%LOCALAPPDATA%/ms-playwright/chromium-*/chrome-win64/chrome.exe`（取修订号最大的）→ ③ 回退 Playwright 自带的 Chromium（`find_chromium()` 返回 `None` 即走这条）。
+- **Python**：各 bat 脚本用 `cd /d "%~dp0"` 定位仓库根，解释器走 PATH；若本机默认 `python` 不含依赖，可用 `set PY_EXE=<你的 python.exe>` 覆盖。产物路径因此不受当前工作目录影响。

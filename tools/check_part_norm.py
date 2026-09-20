@@ -2,14 +2,18 @@
 import sqlite3
 import sys
 from collections import Counter
+from pathlib import Path
 
-sys.path.insert(0, r"C:\Users\Dong\spare-parts-monitor")
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 sys.stdout.reconfigure(encoding="utf-8")
 from crawler import part_norm as pn  # noqa: E402
 
+DB = ROOT / "spare_parts.db"
+
 
 def main():
-    c = sqlite3.connect(r"C:\Users\Dong\spare-parts-monitor\spare_parts.db")
+    c = sqlite3.connect(str(DB))
     rows = c.execute(
         "SELECT p.part_type, p.name, COUNT(*) n FROM parts p "
         "JOIN models m ON m.id=p.model_id GROUP BY p.part_type, p.name"

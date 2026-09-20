@@ -15,7 +15,11 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-CHROME = r"C:\Users\Dong\AppData\Local\ms-playwright\chromium-1234\chrome-win64\chrome.exe"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _paths import find_chromium  # noqa: E402
+
+CHROME = find_chromium()          # None -> 用 Playwright 自带 Chromium
+HERE = Path(__file__).resolve().parent
 TR_URL = "https://support.oppo.com/tr/spare-parts-price/"
 # area -> 候选 language（按优先级），与 TR 验证一致：language 用区域码字符串
 AREAS = {
@@ -90,14 +94,16 @@ async def main(out):
     doc = {"captured_at": datetime.now().isoformat(timespec="seconds"),
            "api_base": base, "tr_globals": g, "results": results}
     if out:
-        Path(out).write_text(json.dumps(doc, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"saved -> {out}")
+        op = Path(out)
+        op.parent.mkdir(parents=True, exist_ok=True)
+        op.write_text(json.dumps(doc, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"saved -> {op}")
     return doc
 
 
 def run():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default="oppo_multi_api.json")
+    ap.add_argument("--out", default=str(HERE / "oppo_multi_api.json"))
     args = ap.parse_args()
     import asyncio
     asyncio.run(main(args.out))
