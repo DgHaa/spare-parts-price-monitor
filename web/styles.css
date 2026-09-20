@@ -90,12 +90,36 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .badge.amber{background:var(--amber-soft);color:var(--amber)}
 .badge.gray{background:var(--bg-soft);color:var(--muted)}
 .badge.blue{background:var(--primary-soft);color:var(--primary)}
-/* filters */
-.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:16px}
+/* filters —— 顶部对齐，使各字段的 label 与控件落在同一水平线 */
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;margin-bottom:16px}
 .field{display:flex;flex-direction:column;gap:4px}
-.field label{font-size:11px;color:var(--muted)}
+.field>label{font-size:11px;color:var(--muted);line-height:16px;min-height:16px;
+  display:flex;align-items:center;gap:6px;white-space:nowrap}
+.field>.chips{min-height:36px}   /* 规格/颜色 chips 与 select/input 等高，避免标签错位 */
+.field>.tag{align-self:flex-start;margin-top:8px}   /* 纯文本小标签与 36px 控件行垂直居中 */
 select,input{height:36px;border:1px solid var(--line);border-radius:9px;padding:0 10px;background:#fff;
   font-size:13px;min-width:130px;color:var(--ink)}
+/* 机型检索框（比价矩阵模式①）——筛选+检索一体组合框 */
+.mc-model-field{min-width:260px}
+.mc-search{width:100%}
+.mc-search:focus{outline:none;border-color:var(--primary)}
+.mcount{font-size:11px;color:var(--muted);margin-top:1px;max-width:100%;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.combo{position:relative;width:100%}
+/* 结果面板按内容自适应加宽（不再受输入框宽度限制），右侧元信息不再挤占机型名 */
+.combo-list{display:none;position:absolute;left:0;top:calc(100% + 4px);z-index:50;
+  width:max-content;min-width:100%;max-width:min(760px,92vw);
+  max-height:320px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:10px;
+  box-shadow:0 8px 24px rgba(15,23,42,.16);padding:4px}
+.combo.open .combo-list{display:block}
+.combo-item{display:flex;align-items:baseline;justify-content:space-between;gap:18px;
+  padding:7px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--ink)}
+.combo-item:hover{background:var(--bg-soft)}
+.combo-item.active{background:var(--primary-soft);color:var(--primary)}
+.combo-item .combo-name{font-weight:500;white-space:nowrap;flex:1 1 auto;min-width:0;
+  overflow:hidden;text-overflow:ellipsis}
+.combo-item .combo-meta{font-size:11px;color:var(--muted);white-space:nowrap;flex:none}
+.combo-empty{padding:10px;color:var(--muted);font-size:12px;text-align:center}
 /* coverage matrix */
 .cov-cell{text-align:center;font-size:12px;padding:8px 6px;border-radius:8px}
 .cov-ok{background:var(--green-soft);color:var(--green)}

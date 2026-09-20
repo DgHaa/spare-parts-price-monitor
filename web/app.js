@@ -335,36 +335,114 @@
     const brandsList = [...new Set(bm.map(r => r.brand))].sort();
     $("#mc-body").innerHTML = '<div class="filters">' +
       '<div class="field"><label>品牌</label><select id="mc-b">' + brandsList.map(b => `<option>${esc(b)}</option>`).join("") + '</select></div>' +
-      '<div class="field"><label>基础机型</label><select id="mc-m"></select></div>' +
+      '<div class="field mc-model-field"><label>基础机型</label>' +
+      '<div id="mc-m-wrap" class="combo">' +
+      '<input id="mc-search" class="mc-search" type="text" placeholder="检索或筛选机型（如 iPhone / Galaxy）" autocomplete="off">' +
+      '<div id="mc-list" class="combo-list" role="listbox"></div>' +
+      '</div>' +
+      '<span id="mc-mcount" class="mcount"></span></div>' +
       '<div class="field"><label>规格/SKU</label><span id="mc-specs" class="chips"></span></div>' +
       '<div class="field"><label>颜色</label><span id="mc-colors" class="chips"></span></div>' +
       '<div class="field"><label>季度</label><select id="mc-q">' + (state.quarters || []).map(x => `<option ${x === q ? "selected" : ""}>${x}</option>`).join("") + '</select></div>' +
       '<div class="field"><label>&nbsp;</label><button id="mc-star" class="btn">☆ 关注此机型</button></div>' +
       '</div><div id="mc-result"></div>';
-    const bSel = $("#mc-b"), mSel = $("#mc-m"), qSel = $("#mc-q"), specBox = $("#mc-specs"), colorBox = $("#mc-colors"), starBtn = $("#mc-star");
+    const bSel = $("#mc-b"), qSel = $("#mc-q"), specBox = $("#mc-specs"), colorBox = $("#mc-colors"), starBtn = $("#mc-star"), searchBox = $("#mc-search"), mcount = $("#mc-mcount"), comboWrap = $("#mc-m-wrap"), listBox = $("#mc-list");
+    let selectedModel = "";
     const modelsOf = b => (bm || []).filter(r => r.brand === b);
-    const fillModels = () => {
-      const ms = modelsOf(bSel.value);
-      mSel.innerHTML = ms.length ? ms.map(r => `<option value="${esc(r.model)}">${esc(r.model)}（${r.tier || "—"} · ${(r.countries || []).length}国${(r.specs || []).length ? " · " + (r.specs || []).length + "规格" : ""}${(r.colors || []).length ? " · " + (r.colors || []).length + "色" : ""}${(r.editions || []).length ? " · " + (r.editions || []).length + "版本" : ""}）</option>`).join("") : '<option>—</option>';
-    };
+    const MAX_OPTS = 300;
     const syncStar = () => {
-      const key = bSel.value + "|" + mSel.value;
+      const key = bSel.value + "|" + selectedModel;
       starBtn.textContent = (inWatch(key) ? "★ " : "☆ ") + "关注此机型";
       starBtn.classList.toggle("on", inWatch(key));
     };
-    fillModels(); syncStar();
-    bSel.onchange = () => { fillModels(); _mSpec = ""; _mColor = ""; syncStar(); draw(); };
-    mSel.onchange = () => { _mSpec = ""; _mColor = ""; syncStar(); draw(); };
+    const fillModels = () => {
+      const kw = (searchBox.value || "").trim().toLowerCase();
+      let ms = modelsOf(bSel.value);
+      if (kw) ms = ms.filter(r => (r.model || "").toLowerCase().includes(kw) || (r.base_model || "").toLowerCase().includes(kw));
+      const total = ms.length;
+      const shown = ms.slice(0, MAX_OPTS);
+      if (total === 0) {
+        listBox.innerHTML = '<div class="combo-empty">无匹配机型，换个关键字试试</div>';
+        mcount.textContent = kw ? "无匹配机型" : "该品牌暂无机型数据";
+        mcount.style.color = "var(--red)";
+        return;
+      }
+      listBox.innerHTML = shown.map(r => {
+        const sel = r.model === selectedModel ? " active" : "";
+        const nSpec = (r.specs || []).length, nColor = (r.colors || []).length, nEd = (r.editions || []).length;
+        const meta = `${r.tier || "—"} · ${(r.countries || []).length}国` +
+          (nSpec ? " · " + nSpec + "规格" : "") +
+          (nColor ? " · " + nColor + "色" : "") +
+          (nEd ? " · " + nEd + "版本" : "");
+        return `<div class="combo-item${sel}" role="option" data-m="${esc(r.model)}">` +
+          `<span class="combo-name">${esc(r.model)}</span>` +
+          `<span class="combo-meta">${esc(meta)}</span></div>`;
+      }).join("");
+      // 用 mousedown + preventDefault，避免输入框先 blur 导致面板提前关闭而点不到
+      listBox.querySelectorAll(".combo-item").forEach(el => {
+        el.onmousedown = (e) => { e.preventDefault(); pickModel(el.dataset.m); };
+      });
+      if (total > MAX_OPTS) { mcount.textContent = `共 ${total} 条 · 显示前 ${MAX_OPTS}，输入可缩小`; mcount.style.color = "var(--muted)"; }
+      else { mcount.textContent = `共 ${total} 条`; mcount.style.color = "var(--muted)"; }
+    };
+    const showList = () => { comboWrap.classList.add("open"); fillModels(); };
+    const hideList = () => { comboWrap.classList.remove("open"); };
+    const showCur = () => { mcount.textContent = selectedModel ? "已选：" + selectedModel : "请选择机型"; mcount.style.color = "var(--muted)"; };
+    const pickModel = (m) => {
+      selectedModel = m;
+      searchBox.value = "";            // 清空检索框，下次聚焦可重新浏览全部
+      hideList();
+      _mSpec = ""; _mColor = "";
+      syncStar();
+      showCur();
+      draw();
+    };
+    const onComboKey = (e) => {
+      const items = [...listBox.querySelectorAll(".combo-item")];
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (!comboWrap.classList.contains("open")) { showList(); return; }
+        let i = items.findIndex(it => it.classList.contains("active"));
+        i = i < 0 ? 0 : Math.min(items.length - 1, i + 1);
+        items.forEach(it => it.classList.remove("active"));
+        if (items[i]) { items[i].classList.add("active"); items[i].scrollIntoView({block: "nearest"}); }
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        let i = items.findIndex(it => it.classList.contains("active"));
+        i = i < 0 ? items.length - 1 : Math.max(0, i - 1);
+        items.forEach(it => it.classList.remove("active"));
+        if (items[i]) { items[i].classList.add("active"); items[i].scrollIntoView({block: "nearest"}); }
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        const act = listBox.querySelector(".combo-item.active") || items[0];
+        if (act) pickModel(act.dataset.m);
+      } else if (e.key === "Escape") { hideList(); }
+    };
+    const initBrand = () => {
+      const ms = modelsOf(bSel.value);
+      selectedModel = ms.length ? ms[0].model : "";
+      searchBox.value = "";
+      fillModels();
+      syncStar();
+      showCur();                       // 面板默认收起，mcount 显示当前选中
+    };
+    initBrand();
+    let _msT = null;
+    searchBox.oninput = () => { clearTimeout(_msT); _msT = setTimeout(() => { showList(); fillModels(); }, 60); };
+    searchBox.onfocus = () => { showList(); fillModels(); };
+    searchBox.onblur = () => { setTimeout(hideList, 160); };
+    searchBox.onkeydown = onComboKey;
+    bSel.onchange = () => { _mSpec = ""; _mColor = ""; initBrand(); draw(); };
     qSel.onchange = draw;
     starBtn.onclick = () => {
-      const key = bSel.value + "|" + mSel.value;
+      const key = bSel.value + "|" + selectedModel;
       const on = toggleWatch(key);
       syncStar();
       toast(on ? "已加入「我的关注」" : "已取消关注");
     };
     async function draw() {
       const d = (await api("/api/model_compare?brand=" + encodeURIComponent(bSel.value) +
-        "&base_model=" + encodeURIComponent(mSel.value) + "&quarter=" + encodeURIComponent(qSel.value) +
+        "&base_model=" + encodeURIComponent(selectedModel) + "&quarter=" + encodeURIComponent(qSel.value) +
         (_mSpec ? "&spec=" + encodeURIComponent(_mSpec) : "") +
         (_mColor ? "&color=" + encodeURIComponent(_mColor) : ""))) || {};
       state.mcData = d;  // 缓存供单元格下钻明细使用
@@ -383,7 +461,7 @@
       let pb = null;
       try {
         pb = await api("/api/price_bands?brand=" + encodeURIComponent(bSel.value) +
-          "&model=" + encodeURIComponent(mSel.value) + "&quarter=" + encodeURIComponent(qSel.value));
+          "&model=" + encodeURIComponent(selectedModel) + "&quarter=" + encodeURIComponent(qSel.value));
       } catch (e) { pb = null; }
       // 组装：分组多表 + 定价结构 + 到手估算 + 第三方对比 + 降价预警
       let html = modelCompareHTML(d, pb);
