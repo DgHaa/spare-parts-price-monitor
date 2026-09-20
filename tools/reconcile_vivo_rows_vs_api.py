@@ -28,6 +28,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, "C:/Users/Dong/.workbuddy/skills/spare-parts-price/scripts")
+_VENDOR = ROOT / "vendor"  # 仓库内副本优先（最后插入 = 最先被 import）
+if _VENDOR.exists():
+    sys.path.insert(0, str(_VENDOR))
 
 DB = ROOT / "spare_parts.db"
 BRAND = "vivo"

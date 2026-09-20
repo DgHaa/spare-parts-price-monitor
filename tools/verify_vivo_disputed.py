@@ -10,8 +10,12 @@ import asyncio
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_ROOT))
 sys.path.insert(0, "C:/Users/Dong/.workbuddy/skills/spare-parts-price/scripts")
+_VENDOR = _ROOT / "vendor"  # 仓库内副本优先（最后插入 = 最先被 import）
+if _VENDOR.exists():
+    sys.path.insert(0, str(_VENDOR))
 
 TARGETS = ["X200 FE", "X300", "V70 Lite 5G", "T1 Pro 5G"]
 
