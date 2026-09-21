@@ -876,6 +876,254 @@
         "updated_at": "2026-08-27",
         "notes": "【已实测确认 2026-08-27】Apple 不提供土耳其语区公开维修价页：/tr/iphone/repair、/tr/iphone/repair/service 均 curl 404。Apple 仅对部分语区（de/jp/ae/en-my 等）发布维修预估费。该区域留空，后续若 Apple 上线 TR 页再校准。"
       }
+    ],
+    "cn": [
+      {
+        "device_category": "phone",
+        "locale": "zh-CN",
+        "currency": "CNY",
+        "entry": {
+          "url": "https://support.apple.com/zh-cn/iphone/repair",
+          "steps": [
+            {
+              "act": "goto",
+              "url": "https://support.apple.com/zh-cn/iphone/repair"
+            },
+            {
+              "act": "wait",
+              "until": "selector_visible:.device-dropdown",
+              "timeout": 10000
+            }
+          ],
+          "expect_url": "https://support.apple.com/zh-cn/iphone/repair"
+        },
+        "query": {
+          "mode": "form_select_cascade",
+          "cascade": [
+            {
+              "field": "device",
+              "sel": ".device-dropdown",
+              "label": "设备系列",
+              "example": "iPhone 16"
+            },
+            {
+              "field": "model",
+              "sel": ".model-dropdown",
+              "label": "具体型号",
+              "example": "iPhone 16 Pro Max"
+            }
+          ],
+          "price_section_heading": "预估服务费用",
+          "note": "Apple 中国维修价为『预估服务费』(含零件+人工，含税)，按机型动态加载，非零件单独标价。选 device→model 后区域显示成本列表。中文标题『预估服务费用』。汇率 CNY 直接采用，无需换算。"
+        },
+        "extract": {
+          "price_rows_locator": "body",
+          "pair_rule": "成本区内每行 = 服务标签 + 金额(含 €/¥/AED/RM)，配对上一行作标签",
+          "cols": {
+            "model": "机型",
+            "part": "服务",
+            "price": "预估服务费"
+          },
+          "sample": {
+            "model": "iPhone 18 Pro",
+            "rows": [
+              {
+                "label": "电池服务",
+                "price": "RMB 1,048"
+              },
+              {
+                "label": "背面玻璃损坏",
+                "price": "RMB 1,298"
+              },
+              {
+                "label": "后置相机损坏",
+                "price": "RMB 1,949"
+              },
+              {
+                "label": "屏幕损坏",
+                "price": "RMB 3,198"
+              },
+              {
+                "label": "屏幕和背面玻璃损坏",
+                "price": "RMB 3,929"
+              },
+              {
+                "label": "其他损坏",
+                "price": "RMB 7,298"
+              }
+            ]
+          }
+        },
+        "evidence": {
+          "screenshot": "references/calibration/apple_de_cal.png",
+          "captured_url": "https://support.apple.com/de-de/iphone/repair?services=service",
+          "captured_at": "2026-08-27T14:25"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-09-18",
+        "notes": "【已浏览器实测校准 2026-08-27】真实入口为 /de-de/iphone/repair（旧 /de/.../screen-replacement 404）。两个自定义下拉 .device-dropdown + .model-dropdown，选机型后动态出『Geschätzte Servicekosten』。样例 iPhone 16 Pro Max 见 extract.sample。复跑 references/calibration/apple_calibrate.py。 【2026-09-18 扩品类】Apple 各品类维修页**完全同构**（.device-dropdown/.model-dropdown/价格标题一致），故同区域追加 ipad/watch 两条记录即可（Mac 页结构不同，且笔记本本就不收）。⚠️ 必须同步改 cascade 里 device/model 两级的 example：discover_cascade_models 用 example **首词做前缀过滤**，沿用 iPhone 的 example 会把 iPad/Watch 型号全滤成 0 台。⚠️ Apple 不提供 /tr/ 维修价页（三品类实测均 404），tr 保持单条 phone 记录。",
+        "price_change_note": "2026-09-17 复核：extract.sample 为 2026-08-27 的历史快照，勿当\"期望值\"。Apple 德国已把 Sonstiger Schaden 由 €899 调至 €979（其余五项 Batterieservice 135 / Rückglasschaden 169 / Schaden an der Rückkamera 299 / Displayschaden 488,99 / Schaden an Display und Rückglas 585 未变）。注意 Displayschaden 为逗号小数（德语 €488,99），任何金额解析都必须走 normalize.parse_amount()。",
+        "sample_refreshed_at": "2026-09-17T16:20"
+      },
+      {
+        "device_category": "tablet",
+        "locale": "zh-CN",
+        "currency": "CNY",
+        "entry": {
+          "url": "https://support.apple.com/zh-cn/ipad/repair",
+          "steps": [
+            {
+              "act": "goto",
+              "url": "https://support.apple.com/zh-cn/ipad/repair"
+            },
+            {
+              "act": "wait",
+              "until": "selector_visible:.device-dropdown",
+              "timeout": 10000
+            }
+          ],
+          "expect_url": "https://support.apple.com/zh-cn/ipad/repair"
+        },
+        "query": {
+          "mode": "form_select_cascade",
+          "cascade": [
+            {
+              "field": "device",
+              "sel": ".device-dropdown",
+              "label": "设备系列",
+              "example": "iPad Pro",
+              "exclude": [
+                "Zubehör",
+                "Zubehoer",
+                "アクセサリ",
+                "accessor"
+              ]
+            },
+            {
+              "field": "model",
+              "sel": ".model-dropdown",
+              "label": "具体型号",
+              "example": "iPad Pro 13-inch (M4)"
+            }
+          ],
+          "price_section_heading": "预估服务费用",
+          "note": "Apple 中国维修价为『预估服务费』(含零件+人工，含税)，按机型动态加载，非零件单独标价。选 device→model 后区域显示成本列表。中文标题『预估服务费用』。汇率 CNY 直接采用，无需换算。"
+        },
+        "extract": {
+          "price_rows_locator": "body",
+          "pair_rule": "成本区内每行 = 服务标签 + 金额(含 €/¥/AED/RM)，配对上一行作标签",
+          "cols": {
+            "model": "机型",
+            "part": "服务",
+            "price": "预估服务费"
+          },
+          "sample": {
+            "model": "iPad",
+            "rows": [
+              {
+                "label": "电池服务",
+                "price": "RMB 1,048"
+              },
+              {
+                "label": "屏幕损坏",
+                "price": "RMB 3,198"
+              },
+              {
+                "label": "其他损坏",
+                "price": "RMB 7,298"
+              }
+            ]
+          }
+        },
+        "evidence": {
+          "screenshot": "references/calibration/apple_de_cal.png",
+          "captured_url": "https://support.apple.com/de-de/ipad/repair",
+          "captured_at": "2026-08-27T14:25"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-08-27",
+        "notes": "【已浏览器实测校准 2026-08-27】真实入口为 /de-de/iphone/repair（旧 /de/.../screen-replacement 404）。两个自定义下拉 .device-dropdown + .model-dropdown，选机型后动态出『Geschätzte Servicekosten』。样例 iPhone 16 Pro Max 见 extract.sample。复跑 references/calibration/apple_calibrate.py。 【2026-09-18 新增 tablet 品类】官方把维修价按品类拆成独立页，实测 /ipad/repair 与 /iphone/repair **结构完全同构**（device-dropdown / model-dropdown / 价格标题计数均一致），故复用 form_select_cascade 逻辑、只换 URL。⚠️ 本记录**无 extract.sample**：iPhone 样例是 2026-08-27 真机校准的历史快照，复制到 tablet 名下即伪造证据，样例价待首次抓取后回填。",
+        "price_change_note": "2026-09-17 复核：extract.sample 为 2026-08-27 的历史快照，勿当\"期望值\"。Apple 德国已把 Sonstiger Schaden 由 €899 调至 €979（其余五项 Batterieservice 135 / Rückglasschaden 169 / Schaden an der Rückkamera 299 / Displayschaden 488,99 / Schaden an Display und Rückglas 585 未变）。注意 Displayschaden 为逗号小数（德语 €488,99），任何金额解析都必须走 normalize.parse_amount()。",
+        "sample_refreshed_at": "2026-09-17T16:20"
+      },
+      {
+        "device_category": "watch",
+        "locale": "zh-CN",
+        "currency": "CNY",
+        "entry": {
+          "url": "https://support.apple.com/zh-cn/watch/repair",
+          "steps": [
+            {
+              "act": "goto",
+              "url": "https://support.apple.com/zh-cn/watch/repair"
+            },
+            {
+              "act": "wait",
+              "until": "selector_visible:.device-dropdown",
+              "timeout": 10000
+            }
+          ],
+          "expect_url": "https://support.apple.com/zh-cn/watch/repair"
+        },
+        "query": {
+          "mode": "form_select_cascade",
+          "cascade": [
+            {
+              "field": "device",
+              "sel": ".device-dropdown",
+              "label": "设备系列",
+              "example": "Apple Watch Series 10"
+            },
+            {
+              "field": "model",
+              "sel": ".model-dropdown",
+              "label": "具体型号",
+              "example": "Apple Watch Series 10"
+            }
+          ],
+          "price_section_heading": "预估服务费用",
+          "note": "Apple 中国维修价为『预估服务费』(含零件+人工，含税)，按机型动态加载，非零件单独标价。选 device→model 后区域显示成本列表。中文标题『预估服务费用』。汇率 CNY 直接采用，无需换算。"
+        },
+        "extract": {
+          "price_rows_locator": "body",
+          "pair_rule": "成本区内每行 = 服务标签 + 金额(含 €/¥/AED/RM)，配对上一行作标签",
+          "cols": {
+            "model": "机型",
+            "part": "服务",
+            "price": "预估服务费"
+          },
+          "sample": {
+            "model": "Apple Watch",
+            "rows": [
+              {
+                "label": "电池服务",
+                "price": "RMB 648"
+              },
+              {
+                "label": "屏幕损坏",
+                "price": "RMB 1,598"
+              },
+              {
+                "label": "其他损坏",
+                "price": "RMB 2,298"
+              }
+            ]
+          }
+        },
+        "evidence": {
+          "screenshot": "references/calibration/apple_de_cal.png",
+          "captured_url": "https://support.apple.com/de-de/watch/repair",
+          "captured_at": "2026-08-27T14:25"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-08-27",
+        "notes": "【已浏览器实测校准 2026-08-27】真实入口为 /de-de/iphone/repair（旧 /de/.../screen-replacement 404）。两个自定义下拉 .device-dropdown + .model-dropdown，选机型后动态出『Geschätzte Servicekosten』。样例 iPhone 16 Pro Max 见 extract.sample。复跑 references/calibration/apple_calibrate.py。 【2026-09-18 新增 watch 品类】官方把维修价按品类拆成独立页，实测 /watch/repair 与 /iphone/repair **结构完全同构**（device-dropdown / model-dropdown / 价格标题计数均一致），故复用 form_select_cascade 逻辑、只换 URL。⚠️ 本记录**无 extract.sample**：iPhone 样例是 2026-08-27 真机校准的历史快照，复制到 watch 名下即伪造证据，样例价待首次抓取后回填。",
+        "price_change_note": "2026-09-17 复核：extract.sample 为 2026-08-27 的历史快照，勿当\"期望值\"。Apple 德国已把 Sonstiger Schaden 由 €899 调至 €979（其余五项 Batterieservice 135 / Rückglasschaden 169 / Schaden an der Rückkamera 299 / Displayschaden 488,99 / Schaden an Display und Rückglas 585 未变）。注意 Displayschaden 为逗号小数（德语 €488,99），任何金额解析都必须走 normalize.parse_amount()。",
+        "sample_refreshed_at": "2026-09-17T16:20"
+      }
     ]
   }
 }
