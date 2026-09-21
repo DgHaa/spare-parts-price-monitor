@@ -39,14 +39,19 @@ SCOPE = {
     "oppo":   {"countries": ["cn", "de", "tr", "mx", "my", "jp", "ae"], "models": None,
                "country_names": {"cn": "中国", "de": "德国", "tr": "土耳其", "mx": "墨西哥",
                                  "my": "马来西亚", "jp": "日本", "ae": "阿联酋"}},
-    "vivo":   {"countries": ["my", "tr", "ae"], "models": None,
-               "country_names": {"my": "马来西亚", "tr": "土耳其", "ae": "阿联酋"}},
+    # vivo/cn（中国）：vivo.com.cn 独立域名，维修价工具在 /service/accessory。
+    # ⚠️ 实测 2026-09-21：中国站 query/v2 返回**品牌级服务方案目录**（优惠换/安心换），
+    # 与机型无关（同家族不同机型返回完全一致的 1058 条「屏幕」类目），非逐机型备件价。
+    # 故 KB 标 status=unavailable，crawl_brand_country 跳过，不污染逐机型比价。
+    # executor 已落地真实取数能力（vivo_cn_support_page/vivo_cn_price_rows），强制开启即可用。
+    "vivo":   {"countries": ["cn", "my", "tr", "ae"], "models": None,
+               "country_names": {"cn": "中国", "my": "马来西亚", "tr": "土耳其", "ae": "阿联酋"}},
     "xiaomi": {"countries": ["cn"], "models": None,
                "country_names": {"cn": "中国"}},
     "apple":  {"countries": ["cn", "de", "jp", "ae", "my"], "models": None,
                "country_names": {"cn": "中国", "de": "德国", "jp": "日本", "ae": "阿联酋", "my": "马来西亚"}},
-    "samsung":{"countries": ["de", "tr", "my", "jp", "ae"], "models": None,
-               "country_names": {"de": "德国", "tr": "土耳其", "my": "马来西亚", "jp": "日本", "ae": "阿联酋"}},
+    "samsung":{"countries": ["de", "tr", "my", "jp", "ae", "cn"], "models": None,
+               "country_names": {"de": "德国", "tr": "土耳其", "my": "马来西亚", "jp": "日本", "ae": "阿联酋", "cn": "中国"}},
     "google": {"countries": ["de", "jp", "ae", "my", "tr"], "models": None,
                "country_names": {"de": "德国", "jp": "日本", "ae": "阿联酋", "my": "马来西亚", "tr": "土耳其"}},
 }
@@ -573,7 +578,10 @@ async def discover_and_price_via_vivo(rec, country, max_models=None,
     conc = max(1, min(conc, 16))
     sem = asyncio.Semaphore(conc)
     t0 = time.perf_counter()
-    base = f"https://www.vivo.com/{region_id}/support"
+    if region_id == "cn":
+        base = "https://www.vivo.com.cn/service/accessory"
+    else:
+        base = f"https://www.vivo.com/{region_id}/support"
 
     async def _one(c):
         """取一台型号的价表；任何失败只丢弃该台，不抛出。errored/noprice 分开计数。"""
@@ -592,8 +600,11 @@ async def discover_and_price_via_vivo(rec, country, max_models=None,
                     stats["noprice"] += 1
                 return None
             # 取证链接：该接口 GET/POST 同响应（实测），GET 形式可直接点开，
-            # 逐机型精确到本 SKU（data_id 即官方机型 id）。
-            detail = f"{base}/queryPriceByProductId?id={c['data_id']}"
+            # 逐机型精确到本 SKU（data_id 即官方机型 id）。cn 为中国站专用路径。
+            if region_id == "cn":
+                detail = f"{base}?productId={c['data_id']}"
+            else:
+                detail = f"{base}/queryPriceByProductId?id={c['data_id']}"
             return (nm, rows, detail)
         except Exception as e:
             print(f"    [warn] {nm} 取价异常: {type(e).__name__}: {str(e)[:120]}", flush=True)

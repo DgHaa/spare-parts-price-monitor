@@ -278,6 +278,76 @@
         "updated_at": "2026-09-18",
         "notes": "自愈修复（2026-09-04）：AE Gulf 维修页 /support/repair-prices/ 服务端渲染完整价表（内嵌 JSON models 数组 + 折叠屏 HTML 表），无独立 API、无头被区域门控挡成 0 表格。改用 crawl/samsung_api.py 的 ae_static_table 模式服务端直采：标准机型取 replacement(屏幕)/battery(电池)/backCover(后盖)，折叠屏 Fold/Flip 取主屏/外屏。实测 Galaxy A55 5G：屏幕 AED484 / 电池 AED296 / 后盖 AED220。source_url_kind=brand_entry。 【2026-09-18 品类口径确认】库内 ae = phone 25 + tablet 30，共 55 台/88 行。⚠️ fetch_ae 的过滤条件只有 dev.startswith(\"Galaxy\")，挡掉的是电视/充电座等不以 Galaxy 命名的条目；**Galaxy Tab / Galaxy Watch 都会通过**（30 台平板即由此而来）。故「ae 库里没有手表/耳机」应判定为**官方该页未列**，不是被我们过滤——与 my 站同理。⚠️ 该页在 2026-09-18 跑批成功后，后续手工复查连续超时（urllib 3×25s + 浏览器 90s 均超时，疑限流），如需再确认手表覆盖请换时段重试，勿据此判定页面失效。"
       }
+    ],
+    "cn": [
+      {
+        "device_category": "phone",
+        "locale": "zh-CN",
+        "currency": "CNY",
+        "entry": {
+          "url": "https://service.samsung.com.cn/#/public/spare/part/price",
+          "steps": [],
+          "expect_url": "https://service.samsung.com.cn/#/public/spare/part/price"
+        },
+        "query": {
+          "mode": "samsung_api",
+          "api": {
+            "type": "cn_price_list",
+            "base": "https://service.samsung.com.cn/rest/scic/open/spare-part-price",
+            "currency": "CNY",
+            "seed_models": [
+              "SM-S9210",
+              "SM-S9280",
+              "SM-S9260",
+              "SM-S9180",
+              "SM-S9110",
+              "SM-S9160",
+              "SM-S9380",
+              "SM-S9360",
+              "SM-S9310"
+            ],
+            "part_names": [
+              "主板",
+              "屏",
+              "尾插",
+              "后盖",
+              "电池",
+              "摄像头"
+            ],
+            "category_map": {
+              "主板": "主板",
+              "屏": "屏幕",
+              "尾插": "充电口",
+              "后盖": "后盖",
+              "电池": "电池",
+              "摄像头": "摄像头"
+            },
+            "model_names": {
+              "SM-S9210": "Galaxy S24",
+              "SM-S9280": "Galaxy S24 Ultra",
+              "SM-S9260": "Galaxy S24+",
+              "SM-S9180": "Galaxy S23 Ultra",
+              "SM-S9110": "Galaxy S23",
+              "SM-S9160": "Galaxy S23+",
+              "SM-S9380": "Galaxy S25 Ultra",
+              "SM-S9360": "Galaxy S25+",
+              "SM-S9310": "Galaxy S25"
+            },
+            "note": "服务端 HTTP 直采 /rest/scic/open/spare-part-price/list（model=颜色变体码, part=中文部件名逗号拼接），无需浏览器"
+          }
+        },
+        "evidence": {
+          "screenshot": "",
+          "captured_url": "",
+          "captured_at": "",
+          "api_verified_at": "2026-09-21",
+          "api_sample_url": "https://service.samsung.com.cn/rest/scic/open/spare-part-price/list?model=SM-S9210LBGCHC&part=%E4%B8%BB%E6%9D%BF,%E5%B1%8F,%E5%B0%BE%E6%8F%92,%E5%90%8E%E7%9B%96,%E7%94%B5%E6%B1%A0,%E6%91%84%E5%83%8F%E5%A4%B4"
+        },
+        "status": "verified",
+        "reviewed": true,
+        "updated_at": "2026-09-21",
+        "notes": "服务端直采（2026-09-21）：三星中国包外零配件价走公开 REST /rest/scic/open/spare-part-price/*。机型候选 GET /models?searchVal=<型号码>（返回机型码+25 颜色变体码；基类码直接查价返回空，必须取颜色变体码）；价表 GET /list?model=<颜色变体码>&part=<主板,屏,尾插,后盖,电池,摄像头>（中文部件名逗号拼接，来自 LEGO 码表 csui.prod-type.phone.parts）。响应 result=[{部件名:[{PART_CODE,PART_DESC,PART_PRICE,WAERS:CNY}]}]，同类目取首个（主件）为代表。价格已是 CNY，无独立人工费字段（官网单列总维修价）。颜色变体间备件码一致，取首个变体为代表（避免 25× 行膨胀）。实测 Galaxy S24：主板 2420 / 屏幕 889.96 / 充电口 118.48 / 后盖 135 / 电池 140 / 摄像头 151.61（CNY）。source_url_kind=brand_entry（取证链接即 list 接口）。seed_models 为近期 Galaxy S 系列机型码，可按需扩展。"
+      }
     ]
   }
 }

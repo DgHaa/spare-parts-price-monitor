@@ -24,6 +24,7 @@ import re
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime
 from html import unescape as _unescape
@@ -555,6 +556,92 @@ def fetch_jp(rec):
     return out
 
 
+# ---------------- 中国(cn)：服务端 HTTP 直采 /rest/scic/open/spare-part-price/list ----------------
+# 逆向所得（2026-09-21，Playwright 抓 SPA + 读 build.2890 切片确认）：
+#   机型候选：GET {base}/models?searchVal=<型号码> -> [机型码, 颜色变体码...]
+#            （如 SM-S9210 返回自身 + 25 个颜色变体；基类码直接查价返回空，必须用颜色变体码）
+#   价表：GET {base}/list?model=<颜色变体码>&part=<中文部件名逗号拼接>
+#        -> result=[{部件名:[{MODEL_CODE,PART_CODE,PART_DESC,PART_PRICE,WAERS:CNY}...]}]
+#   部件名（中文）固定 6 类：主板/屏/尾插/后盖/电池/摄像头（来自 LEGO 码表
+#        csui.prod-type.phone.parts，part 参数即这些中文名的逗号拼接）
+#   价格 PART_PRICE 已是 CNY（WAERS=CNY），无独立人工费字段 -> 官网单列总维修价。
+# 仅依赖标准库，无需浏览器；与其它 fetch_* 同口径返回 [(model_name, rows, detail_url), ...]。
+_CN_BASE_DEFAULT = "https://service.samsung.com.cn/rest/scic/open/spare-part-price"
+_CN_PARTS_DEFAULT = ["主板", "屏", "尾插", "后盖", "电池", "摄像头"]
+_CN_CAT_MAP_DEFAULT = {"主板": "主板", "屏": "屏幕", "尾插": "充电口",
+                       "后盖": "后盖", "电池": "电池", "摄像头": "摄像头"}
+# 颜色变体间备件码一致，取首个变体为代表即可（避免 25× 行膨胀），价格与颜色无关。
+
+
+def _cn_get(base, path, params=None, retries=3):
+    url = base.rstrip("/") + path
+    if params:
+        url += "?" + urllib.parse.urlencode(params)
+    last = None
+    for _ in range(retries):
+        try:
+            req = urllib.request.Request(url, headers={
+                "User-Agent": UA["User-Agent"],
+                "Accept-Language": "zh-CN,zh;q=0.9",
+                "X-Requested-With": "XMLHttpRequest",
+                "Referer": "https://service.samsung.com.cn/#/public/spare/part/price"})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return json.loads(r.read().decode("utf-8", "replace"))
+        except Exception as e:  # noqa: BLE001
+            last = e
+            time.sleep(0.5)
+    raise RuntimeError(f"GET {url} 失败: {last}")
+
+
+def fetch_cn(rec):
+    """服务端直采 三星中国包外零配件价（无需浏览器）。"""
+    api = rec.get("query", {}).get("api", {})
+    base = (api.get("base") or _CN_BASE_DEFAULT).rstrip("/")
+    parts = api.get("part_names") or _CN_PARTS_DEFAULT
+    cat_map = api.get("category_map") or _CN_CAT_MAP_DEFAULT
+    seeds = api.get("seed_models") or []
+    names = api.get("model_names") or {}
+    part_q = ",".join(parts)
+    out = []
+    for code in seeds:
+        try:
+            mjson = _cn_get(base, "/models", {"searchVal": code})
+        except Exception:  # noqa: BLE001
+            continue
+        if not isinstance(mjson, list) or not mjson:
+            continue
+        # 基类码直接查价返回空 -> 取首个颜色变体码。
+        # 注意 /models 偶发把基类码原样小写返回（如 SM-s9110），需忽略大小写剔除，
+        # 否则会拿无效基类码去查价而得到 0 行（S23/S23+ 因此缺失）。
+        variants = [c for c in mjson if c.upper() != code.upper()]
+        variant = variants[0] if variants else mjson[0]
+        try:
+            ljson = _cn_get(base, "/list", {"model": variant, "part": part_q})
+        except Exception:  # noqa: BLE001
+            continue
+        res = (ljson or {}).get("result") or []
+        if not res:
+            continue
+        rows = []
+        for grp in res:
+            for pname, items in grp.items():
+                if not items:
+                    continue
+                it = items[0]  # 同类目取首个（主件）为代表
+                price = _parse_amount(str(it.get("PART_PRICE")))
+                if not price or price <= 0:
+                    continue
+                rows.append({"part": cat_map.get(pname, pname), "price": price})
+        if rows:
+            mname = names.get(code, code)
+            detail = (f"{base}/list?model={urllib.parse.quote(variant)}"
+                      f"&part={urllib.parse.quote(part_q)}")
+            for r in rows:
+                r["category"] = guess_category(mname)
+            out.append((mname, rows, detail))
+    return out
+
+
 # ---------------- 落库（镜像 run.py write_rows） ----------------
 def _write_model(brand, country, country_name, rec, model_name, rows, detail_url):
     if not rows:
@@ -628,6 +715,8 @@ def crawl_and_write(brand, country, country_name, rec, force=False):
             models_rows = fetch_tr(rec)
         elif atype == "jp_static_table":
             models_rows = fetch_jp(rec)
+        elif atype == "cn_price_list":
+            models_rows = fetch_cn(rec)
         else:
             raise RuntimeError(f"未知 samsung_api 类型: {atype}")
         bid = upsert_brand(brand, rec.get("query", {}).get("mode"))
@@ -680,7 +769,7 @@ def main():
         print(f"[skip] {args.brand}/{args.country} 状态={rec['status']}", flush=True)
         return
     name = {"de": "德国", "my": "马来西亚", "ae": "阿联酋", "tr": "土耳其",
-            "jp": "日本"}.get(args.country, args.country)
+            "jp": "日本", "cn": "中国"}.get(args.country, args.country)
     status, n, reason = crawl_and_write(args.brand, args.country, name, rec, force=args.force)
     print(f"[{status}] {args.brand}/{args.country} 本季新增 {n} 条价"
           + (f" | {reason}" if reason else ""), flush=True)
