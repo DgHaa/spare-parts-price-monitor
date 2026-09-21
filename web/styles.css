@@ -123,9 +123,14 @@ select,input{height:36px;border:1px solid var(--line);border-radius:9px;padding:
 /* coverage matrix */
 .cov-cell{text-align:center;font-size:12px;padding:8px 6px;border-radius:8px}
 .cov-ok{background:var(--green-soft);color:var(--green)}
+.cov-stale{background:var(--amber-soft);color:var(--amber)}
 .cov-fail{background:var(--red-soft);color:var(--red)}
+.cov-empty{background:var(--bg-soft);color:var(--muted)}
+/* 兼容旧类名 */
 .cov-skip{background:var(--bg-soft);color:var(--muted)}
 .cov-pending{background:var(--amber-soft);color:var(--amber)}
+.cov-legend{margin:2px 0 10px}
+.cov-cell[title]{cursor:help}
 /* heatmap matrix */
 .heat{width:100%;border-collapse:separate;border-spacing:3px}
 .heat th{background:transparent;color:var(--muted);font-weight:600;text-align:center;position:static}

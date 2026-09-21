@@ -242,15 +242,17 @@
   async function renderOverview() {
     const ov = state.overview; if (!ov) return;
     const k = ov.kpis;
-    const health = k.health || {};
+    const kcov = k.coverage || {};
     const kpis = [
       { l: "监控品牌", v: k.brands, s: "国内外友商" },
       { l: "覆盖国家", v: k.countries, s: "区域市场" },
       { l: "机型数", v: k.models, s: "已发现" },
       { l: "备件价条数", v: fmt(k.price_rows), s: "原币+CNY" },
       { l: "季度数", v: k.quarters, s: k.latest_quarter },
-      { l: "抓取正常", v: health.success || 0, s: "最新运行", dot: "var(--green)" },
-      { l: "抓取异常", v: (health.failed || 0) + (health.partial || 0), s: "最新运行", dot: "var(--red)" },
+      // 覆盖口径（品牌×国家，看"有没有数据"）替代原先的"最新运行状态"口径：
+      // 断点续跑会让最新运行恒为 skipped，据此统计会把正常覆盖误报成"抓取异常"。
+      { l: "覆盖就绪", v: kcov.ok || 0, s: "品牌×国家·本季有数据", dot: "var(--green)" },
+      { l: "覆盖待补", v: (kcov.stale || 0) + (kcov.failed || 0) + (kcov.empty || 0), s: "无数据/非本季", dot: "var(--amber)" },
       { l: "待修工单", v: k.open_issues, s: "自愈队列", dot: "var(--amber)" },
     ];
     let html = '<div class="grid kpis">';
@@ -262,10 +264,12 @@
     html += "</div>";
 
     // 覆盖不足提醒（数据覆盖度 / 公信力）
+    // 注意：判据是"本季是否有数据"(cov_status==='ok')，不是"本轮运行是否 success"。
+    // 后者在断点续跑时恒为 skipped，会把已有数据的品牌误报成"0国"。
     const covByBrand = {};
     (ov.coverage || []).forEach(r => {
       (covByBrand[r.brand] = covByBrand[r.brand] || new Set());
-      if (r.status === "success") covByBrand[r.brand].add(r.country);
+      if (r.cov_status === "ok") covByBrand[r.brand].add(r.country);
     });
     const weak = Object.entries(covByBrand).filter(([b, s]) => s.size <= 1).map(([b, s]) => esc(b) + "(" + s.size + "国)");
     if (weak.length) {
@@ -277,7 +281,19 @@
     const cov = ov.coverage || [];
     const countries = [...new Set(cov.map(r => r.country))].sort();
     const brands = [...new Set(cov.map(r => r.brand))].sort();
+    // 格子底色 = 实际覆盖情况（cov_status），不是"本轮运行状态"。
+    // 断点续跑会让绝大多数格子 status='skipped'，若据此涂灰，会把已有上万条
+    // 价行的格子显示成"无数据"——这正是"只有一块绿色"的原因。
+    const covCls = { ok: "cov-ok", stale: "cov-stale", failed: "cov-fail", empty: "cov-empty" };
+    const covLabel = { ok: "已覆盖本季", stale: "仅历史季度有数据，本季待补抓", failed: "抓取失败/受阻，无数据", empty: "从未抓到数据" };
+    const runLabel = { success: "成功", skipped: "跳过（断点续跑/无新增）", failed: "失败", partial: "部分成功" };
     html += '<div class="panel"><div class="section-title">🌐 抓取覆盖矩阵</div>';
+    html += '<div class="legend cov-legend">' +
+      '<span><i class="cov-ok"></i>已覆盖本季</span>' +
+      '<span><i class="cov-stale"></i>仅历史季度</span>' +
+      '<span><i class="cov-fail"></i>失败/无数据</span>' +
+      '<span><i class="cov-empty"></i>从未抓取</span>' +
+      '<span class="muted">数字为该品牌/国家累计价行数；底色看「实际覆盖」，悬停可见本轮运行状态</span></div>';
     html += '<div class="scroll"><table><thead><tr><th>品牌</th>';
     countries.forEach(c => html += `<th>${cn(c)}</th>`);
     html += "</tr></thead><tbody>";
@@ -285,15 +301,21 @@
       html += `<tr><td><b>${esc(b)}</b></td>`;
       countries.forEach(c => {
         const r = cov.find(x => x.brand === b && x.country === c);
-        if (!r) { html += '<td class="cov-cell cov-skip">·</td>'; return; }
-        let cls = "cov-skip", tip = "";
-        if (r.status === "success") cls = "cov-ok";
-        else if (r.status === "failed") cls = "cov-fail";
-        else if (r.status === "skipped") cls = "cov-skip";
-        else cls = "cov-pending";
-        tip = `${b}/${cn(c)} · ${r.status} · ${r.price_rows || 0}条价`;
+        if (!r) {
+          html += `<td class="cov-cell cov-empty" title="${esc(b + "/" + cn(c) + "：无运行记录，尚未抓取")}">·</td>`;
+          return;
+        }
+        const cs = r.cov_status || "empty";
         const mark = r.open_issues ? " ⚠" : "";
-        html += `<td class="cov-cell ${cls}" title="${esc(tip)}">${r.price_rows || 0}${mark}</td>`;
+        const tip = [
+          `${b}/${cn(c)} · ${covLabel[cs] || cs}`,
+          `累计价行 ${r.price_rows || 0} 条（本季 ${r.price_rows_latest || 0} 条）`,
+          `本轮运行：${runLabel[r.status] || r.status || "—"} · 写入 ${r.rows_written || 0} 条 · ${(r.finished_at || "—").replace("T", " ")}`,
+          `最近一次成功：${r.last_success_at ? r.last_success_at.replace("T", " ") : "从未"}`,
+          r.open_issues ? `未解决工单：${r.open_issues}` : "",
+          r.anomaly_reason ? `备注：${r.anomaly_reason}` : "",
+        ].filter(Boolean).join("\n");
+        html += `<td class="cov-cell ${covCls[cs] || "cov-empty"}" title="${esc(tip)}">${fmt(r.price_rows || 0)}${mark}</td>`;
       });
       html += "</tr>";
     });

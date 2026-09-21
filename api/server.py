@@ -206,19 +206,51 @@ def api_overview():
            WHERE id IN (SELECT MAX(id) FROM run_logs GROUP BY brand, country)
            GROUP BY status"""))
     kpis["health"] = {r["status"]: r["n"] for r in hl}
-    # 覆盖矩阵：每个 brand/country 最新状态 + 价行数
+    # 覆盖矩阵：每个 brand/country 最新运行 + 实际价行数
+    #
+    # 2026-09-21 修复：原实现直接用 run_logs.status 给格子上色，于是"断点续跑跳过"
+    # （status='skipped'，rows_written=0）会被涂成灰色，看起来像"该品牌/国家没有数据"，
+    # 而实际上可能已有上万条价行（如 xiaomi/cn 21264 条、oppo/ae 2894 条）。
+    # 现改为按"实际覆盖"派生 cov_status（与运行状态解耦）：
+    #   ok     本季有价行（数据新鲜）
+    #   stale  有余量历史价行但本季为 0（需补抓本季）
+    #   failed 无任何价行，且最近一次运行 failed 或存在未解决工单
+    #   empty  无任何价行，从未成功抓到
+    # 同时保留 status（本轮运行状态）供排查，两者语义不同，前端 tooltip 分别展示。
     cov = rows_to_dict(c.execute(
-        """SELECT r.brand, r.country, r.status, r.rows_written, r.anomaly_flag,
+        """SELECT r.brand, r.country, r.quarter, r.status, r.rows_written,
+                  r.anomaly_flag, r.anomaly_reason, r.finished_at,
                   (SELECT COUNT(*) FROM price_snapshots ps
                      JOIN parts p ON p.id=ps.part_id
                      JOIN models m ON m.id=p.model_id
                      JOIN brands b ON b.id=m.brand_id
                      WHERE b.name=r.brand AND m.country_code=r.country) AS price_rows,
+                  (SELECT COUNT(*) FROM price_snapshots ps
+                     JOIN parts p ON p.id=ps.part_id
+                     JOIN models m ON m.id=p.model_id
+                     JOIN brands b ON b.id=m.brand_id
+                     WHERE b.name=r.brand AND m.country_code=r.country
+                       AND ps.quarter=?) AS price_rows_latest,
+                  (SELECT MAX(s.finished_at) FROM run_logs s
+                     WHERE s.brand=r.brand AND s.country=r.country
+                       AND s.status='success') AS last_success_at,
                   (SELECT COUNT(*) FROM maintenance_queue q
                      WHERE q.brand=r.brand AND q.country=r.country AND q.status='open') AS open_issues
            FROM run_logs r
            WHERE r.id IN (SELECT MAX(id) FROM run_logs GROUP BY brand, country)
-           ORDER BY r.brand, r.country"""))
+           ORDER BY r.brand, r.country""", (latest,)))
+    for r in cov:
+        if r["price_rows_latest"]:
+            r["cov_status"] = "ok"
+        elif r["price_rows"]:
+            r["cov_status"] = "stale"
+        elif r["status"] == "failed" or r["open_issues"]:
+            r["cov_status"] = "failed"
+        else:
+            r["cov_status"] = "empty"
+    kpis["coverage"] = {s: sum(1 for r in cov if r["cov_status"] == s)
+                        for s in ("ok", "stale", "failed", "empty")}
+    kpis["coverage_latest_quarter"] = latest
     c.close()
     return {"kpis": kpis, "coverage": cov, "quarters": quarters}
 
