@@ -3,7 +3,8 @@
 *.db.bak*
 *.db.seed_backup*
 seed_demo.bak
-backups/            # 整库副本、skill 镜像快照等本地回滚用备份，一律不入仓
+# 本地回滚用备份（整库 cp、skill 镜像快照 tar 等），一律不入仓
+backups/
 
 # === 密钥 / token ===
 .crawl_token
