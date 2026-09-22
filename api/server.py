@@ -888,6 +888,36 @@ def _country_in_db(code):
     finally:
         c.close()
 
+def _sync_kb_before_crawl(log_f):
+    """重新抓取前先把项目 KB 部署到 skill（运行时 executor 实际读取的副本）。
+
+    运行 tools/sync_kb.py（项目->skill 部署，等同「抓取前先 sync_kb.py --check」的增强版：
+    不仅报告漂移，还会把 repo 较新/独有的 KB 文件部署到 skill，从而真正避免「改了项目 KB
+    却因 skill 副本滞后而静默 [skip]」回潮；skill 较新的文件标记 conflict 不覆盖
+    （如 google.json 仅时间戳差异）。输出写入抓取日志，并返回简短摘要供前端展示。
+    """
+    summary = {"ran": False, "deployed": 0, "conflicts": [], "note": ""}
+    try:
+        r = subprocess.run(
+            [sys.executable, str(ROOT / "tools" / "sync_kb.py")],
+            cwd=str(ROOT), capture_output=True, text=True, timeout=120)
+        out = (r.stdout or "") + (r.stderr or "")
+        summary["ran"] = True
+        for line in out.splitlines():
+            if line.startswith("[DEPLOY]"):
+                summary["deployed"] += 1
+            elif line.startswith("[CONFLICT]"):
+                summary["conflicts"].append(line.strip())
+        summary["note"] = out.strip().splitlines()[-1] if out.strip() else ""
+        log_f.write("[kb-sync] " + out.replace("\n", "\n[kb-sync] ") + "\n")
+    except Exception as e:
+        summary["note"] = "运行 sync_kb.py 失败：%s（抓取仍继续，但可能用到旧 KB）" % e
+        try:
+            log_f.write("[kb-sync] " + summary["note"] + "\n")
+        except Exception:
+            pass
+    return summary
+
 def launch_crawl(brand, country, force=False):
     """派发一次异步抓取。返回 (job_dict, error_msg)；job_dict 已剔除不可序列化的 proc。
 
@@ -912,6 +942,8 @@ def launch_crawl(brand, country, force=False):
             cmd += ["--country", country]
         if force:
             cmd += ["--force"]
+        # 抓取前同步 KB（项目 -> skill），防止改了项目 KB 却因 skill 副本滞后而静默 skip
+        kb_sync = _sync_kb_before_crawl(log_f)
         try:
             proc = subprocess.Popen(cmd, cwd=str(ROOT),
                                     stdout=log_f, stderr=subprocess.STDOUT)
@@ -922,7 +954,7 @@ def launch_crawl(brand, country, force=False):
                "pid": proc.pid, "proc": proc, "_logf": log_f, "status": "running",
                "started_at": datetime.now().isoformat(timespec="seconds"),
                "log": str(log_path), "returncode": None, "finished_at": None,
-               "error": None}
+               "kb_sync": kb_sync, "error": None}
         CRAWL_JOBS[job_id] = job
         threading.Thread(target=_crawl_worker, args=(job_id,), daemon=True).start()
         return {k: v for k, v in job.items() if k not in ("proc", "_logf")}, None

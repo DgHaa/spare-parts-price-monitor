@@ -232,7 +232,12 @@
       try { st = await api("/api/crawl/status"); } catch { continue; }
       const job = (st.jobs || []).find(j => j.id === jobId);
       if (!job) break;
-      if (job.status === "done") { toast("抓取完成 ✅ " + job.id); break; }
+      if (job.status === "done") {
+        let m = "抓取完成 ✅ " + job.id;
+        if (job.kb_sync && job.kb_sync.conflicts && job.kb_sync.conflicts.length)
+          m += "（KB 冲突未覆盖 " + job.kb_sync.conflicts.length + " 个）";
+        toast(m); break;
+      }
       if (job.status === "failed") { toast("抓取失败 ❌ " + job.id + (job.error ? "：" + job.error : "")); break; }
       if (job.status === "timeout") { toast("抓取超时已回收（已强制结束，可重试）" + (job.error ? "：" + job.error : "")); break; }
     }
@@ -1195,7 +1200,14 @@
       crawlBtn.disabled = true;
       try {
         const res = await triggerCrawl(brand, country, token);
-        toast("已派发抓取任务：" + res.job_id + "（" + res.brand + "/" + res.country + "）");
+        let msg = "已派发抓取任务：" + res.job_id + "（" + res.brand + "/" + res.country + "）";
+        if (res.kb_sync) {
+          if (res.kb_sync.conflicts && res.kb_sync.conflicts.length)
+            msg += "；⚠️ KB 冲突未覆盖 " + res.kb_sync.conflicts.length + " 个（skill 较新）";
+          else if (res.kb_sync.deployed)
+            msg += "；已同步 KB " + res.kb_sync.deployed + " 个文件到运行时";
+        }
+        toast(msg);
         pollCrawl(res.job_id, token);
       } catch (e) { toast("抓取派发失败：" + e.message); }
       finally { crawlBtn.disabled = false; }
