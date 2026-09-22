@@ -12,6 +12,15 @@
 用法：
     python tools/sync_skill_deps.py            # 拷贝并打印差异
     python tools/sync_skill_deps.py --check    # 只检查是否有漂移，不写盘
+
+⚠️ 方向警告（与 tools/sync_kb.py 相反）：
+    本工具是 skill -> 项目（把 skill 依赖 vendoring 进仓库，让仓库自包含）。
+    而 crawler/run.py 运行时实际读取的是 **skill** 目录的 references/kb
+    （executor.load_record 的 KB_DIR 指向 skill 包内）。
+    所以「改了项目 KB 想让抓取生效」应跑 tools/sync_kb.py（项目 -> skill）。
+    切勿在本工具部署后随手跑 sync_skill_deps.py：它会用 skill 旧副本覆盖
+    你在项目里新增/修改的 KB 条目（例如 apple/cn、vivo/cn、samsung/cn 曾因此
+    被静默 [skip]）。本工具只应在「以 skill 为源、刷新仓库快照」时单向使用。
 """
 from __future__ import annotations
 
