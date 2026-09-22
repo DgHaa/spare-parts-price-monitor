@@ -199,19 +199,20 @@
           "api": {
             "fetch_mode": "http",
             "concurrency": 4,
-            "note": "vivo.com.cn 中国站专用：POST /service/accessory/product/list 取机型 + POST /service/accessory/query/v2 取价（见 skill executor.vivo_cn_support_page/vivo_cn_price_rows）"
+            "note": "vivo.com.cn 中国站专用三步：POST /service/accessory/product/list 取机型 → GET cust.vivo.com.cn/.../product/sku?productId=<机型id> 取 SKU 列表(版本/颜色+skuCode) → POST /service/accessory/query/v2 {productId, skuCode} 取逐机型备件价。skuCode 必填（见 skill executor.vivo_cn_support_page/vivo_cn_price_rows）"
           }
         },
         "evidence": {
           "captured_url": "https://www.vivo.com.cn/service/accessory",
           "captured_at": "2026-09-21",
-          "api_verified_at": "2026-09-21",
-          "api_sample_url": "https://www.vivo.com.cn/service/accessory/query/v2?productId=3230"
+          "api_verified_at": "2026-09-22",
+          "api_sample_url": "https://www.vivo.com.cn/service/accessory/query/v2?productId=3230&skuCode=5675066",
+          "api_sku_url": "https://cust.vivo.com.cn/commonservice/repair-component/product/sku?productId=3230"
         },
-        "status": "unavailable",
+        "status": "verified",
         "reviewed": true,
-        "updated_at": "2026-09-21",
-        "notes": "【2026-09-21 实测不可用（品牌级方案，非逐机型价）】vivo 中国是独立域名 vivo.com.cn，维修价工具在 /service/accessory（不是 /support/accessory，后者 404）。接口链：POST /service/accessory/product/list（data[]=家族→products[] 变体，共 11 家族/422 变体）→ POST /service/accessory/query/v2 {productId}（data[]=类目→items=部件）。⚠️ 关键：query/v2 返回的是**品牌级服务方案目录**（优惠换/安心换），与机型无关——productId=3230 与 3231 返回完全一致的 1058 条「屏幕」类目；单台机型即解析出 2843 条价行（数百个同名「屏幕」不同价）。即中国站不提供逐机型备件价，无法纳入跨品牌逐机型比价。故标 unavailable，crawl_brand_country 跳过，executor 真实取数能力保留（强制开启可直接用）。币种 CNY，价字段 price/promotionPrice，人工费 manualFee。对比：全球站(my/tr/ae)的 queryPriceByProductId 返回逐机型干净备件价（Display/Battery/MainBoard），中国站为营销方案页，口径不同。"
+        "updated_at": "2026-09-22",
+        "notes": "【2026-09-22 修正：中国站确实提供逐机型备件价，原 unavailable 误判已撤】vivo 中国是独立域名 vivo.com.cn，维修价工具在 /service/accessory（不是 /support/accessory，后者 404）。选型号→版本→颜色即见对应备件价。接口链（见 skill executor）：① POST /service/accessory/product/list（data[]=家族→products[]=机型，共 11 家族/422 机型，products[].id 为机型 id）② GET cust.vivo.com.cn/commonservice/repair-component/product/sku?productId=<机型id>（data[]=该机型全部 SKU：{skuCode, ram 版本, color 颜色}）③ POST /service/accessory/query/v2 {productId, skuCode}（data[]=类目→items=部件）。⚠️ 关键坑（2026-09-21 误判根因）：query/v2 **必须带 skuCode**，空 skuCode 只返回该机型全 SKU 的默认目录（看似'品牌级'、与机型无关，productId=3230 与 3231 返回一致的大量'屏幕'类目）。带 skuCode（取 skuInfo 首个 SKU 作代表）后返回真实逐机型备件价：priceType==1 为标准件（屏幕/电池/后盖/主板/摄像头…），promotionPrice 优先，manualFee 为人工费单列。备件价按机型口径稳定（与版本/颜色基本无关），故每机型取首个 SKU 即可，无需 422×N 展开。实测 X300 E（12GB+256GB/日光橙, skuCode=5675066）：屏幕 1320(留件价 promo 920, 人工费 50)、电池 199、后盖 195、主板 2600、摄像头(后置广角 45/前置 115/后置潜望 240)、数据线 69、充电器 209，币种 CNY。与全球站(my/tr/ae)的 queryPriceByProductId 同口径（逐机型干净备件价），现已纳入跨品牌逐机型比价。"
       }
     ],
     "de": [

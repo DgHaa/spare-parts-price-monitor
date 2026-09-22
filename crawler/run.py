@@ -40,10 +40,10 @@ SCOPE = {
                "country_names": {"cn": "中国", "de": "德国", "tr": "土耳其", "mx": "墨西哥",
                                  "my": "马来西亚", "jp": "日本", "ae": "阿联酋"}},
     # vivo/cn（中国）：vivo.com.cn 独立域名，维修价工具在 /service/accessory。
-    # ⚠️ 实测 2026-09-21：中国站 query/v2 返回**品牌级服务方案目录**（优惠换/安心换），
-    # 与机型无关（同家族不同机型返回完全一致的 1058 条「屏幕」类目），非逐机型备件价。
-    # 故 KB 标 status=unavailable，crawl_brand_country 跳过，不污染逐机型比价。
-    # executor 已落地真实取数能力（vivo_cn_support_page/vivo_cn_price_rows），强制开启即可用。
+    # ✅ 2026-09-22 修正：中国站确实提供逐机型备件价（选型号→版本→颜色即见）。
+    # 机制：product/list 取机型 → skuInfo 取 SKU(skuCode) → query/v2 {productId, skuCode}
+    # 取价；skuCode 必填，空则退回全 SKU 默认目录（原误判"品牌级"的根因）。KB 已转 verified。
+    # executor 落地于 skill：vivo_cn_support_page / vivo_cn_price_rows（带 skuCode 取价）。
     "vivo":   {"countries": ["cn", "my", "tr", "ae"], "models": None,
                "country_names": {"cn": "中国", "my": "马来西亚", "tr": "土耳其", "ae": "阿联酋"}},
     "xiaomi": {"countries": ["cn"], "models": None,
@@ -600,9 +600,12 @@ async def discover_and_price_via_vivo(rec, country, max_models=None,
                     stats["noprice"] += 1
                 return None
             # 取证链接：该接口 GET/POST 同响应（实测），GET 形式可直接点开，
-            # 逐机型精确到本 SKU（data_id 即官方机型 id）。cn 为中国站专用路径。
+            # 逐机型精确到本 SKU（data_id 即官方机型 id）。cn 为中国站专用路径，
+            # 优先用 vivo_cn_price_rows 回写的可追溯 source_url（含 skuCode）。
             if region_id == "cn":
-                detail = f"{base}?productId={c['data_id']}"
+                detail = (rows[0].get("source_url")
+                          if rows and rows[0].get("source_url") else
+                          f"{base}?productId={c['data_id']}")
             else:
                 detail = f"{base}/queryPriceByProductId?id={c['data_id']}"
             return (nm, rows, detail)

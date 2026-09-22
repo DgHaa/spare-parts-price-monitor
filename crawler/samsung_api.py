@@ -85,6 +85,57 @@ def _post_json(url, body, timeout=25, retries=3):
     raise RuntimeError(f"POST {url} 失败: {last}")
 
 
+# ---------------- 机型名空白归一 / 官方重名条目去重 ----------------
+_WS_RE = None
+
+
+def _norm_ws(name):
+    """把机型名里的**格式性空白**归一：NBSP/窄空格/制表/换行 → 普通空格，多空格并一个，去首尾。
+
+    **只动空白，不动任何可见字符**（不删空格、不改大小写）——因此只在"官方把同一个名字
+    写成不同空白"时才会把两条并成一条，绝不会把语义不同的机型并到一起。
+
+    存在的意义：`models.model_key` 取官方原文名，官方源里同一台机器偶有 NBSP 版本
+    （实测 `Galaxy Tab A9\\xa0(Wi-Fi) - SM-X110` 与 `Galaxy Tab A9 (Wi-Fi) - SM-X110`
+    同 `modelCode=SM-X110N`、两条价表还不一样），直接用原文名做唯一键会写出
+    **重复机型 + 冲突价格**，前端看起来就是同一台平板出现两行不同价。
+    """
+    global _WS_RE
+    if _WS_RE is None:
+        import re as _re
+        _WS_RE = _re.compile(r"[\s\u00a0\u2007\u2009\u202f\u2002\u2003]+")
+    return _WS_RE.sub(" ", (name or "")).strip()
+
+
+def dedupe_model_rows(models_rows, brand="", country=""):
+    """按 `_norm_ws(name)` 去掉**官方重名条目**，同名只保留一条。
+
+    保留规则（确定性、不看价格、不被贵/便宜引导）：
+      1. 优先保留"原文名本身就已归一"的那条（无 NBSP 等格式噪声）——它是规范记录；
+      2. 否则保留**价行更多**的那条（信息更全）；
+      3. 再否则保留 API 返回顺序里的第一条。
+
+    丢弃的条目会打到 stderr（`[dupe] ...`），保证不静默丢数据。
+    """
+    best = {}
+    order = []
+    for item in models_rows:
+        name = item[0]
+        k = _norm_ws(name).casefold()
+        cand = (0 if name == _norm_ws(name) else 1, -len(item[1] or []))
+        if k not in best:
+            best[k] = (cand, item)
+            order.append(k)
+        elif cand < best[k][0]:
+            print(f"  [dupe] {brand}/{country} 官方重名条目归一后同名，"
+                  f"丢弃 {best[k][1][0]!r}（保留 {name!r}，价表更全/命名更规范）", flush=True)
+            best[k] = (cand, item)
+        else:
+            print(f"  [dupe] {brand}/{country} 官方重名条目归一后同名，"
+                  f"丢弃 {name!r}（保留 {best[k][1][0]!r}）", flush=True)
+    return [best[k][1] for k in order]
+
+
 # ---------------- 部件名归一（德/英 -> 中文标准件） ----------------
 def _map_de_part(damage_type):
     t = (damage_type or "").lower()
@@ -719,6 +770,14 @@ def crawl_and_write(brand, country, country_name, rec, force=False):
             models_rows = fetch_cn(rec)
         else:
             raise RuntimeError(f"未知 samsung_api 类型: {atype}")
+        # 官方源偶有"同一台机器两个条目、名字只差一个 NBSP"（真实案例：德站
+        # Galaxy Tab A9 (Wi-Fi) - SM-X110 与 ...A9\xa0(Wi-Fi)...，modelCode 都是 SM-X110N，
+        # 两条价表还不一样）。不去重会落成两台机型 + 两组冲突价。
+        # 去重放在**所有区域共用**的这里，任何区域出现该现象都被挡住。
+        raw_total = len(models_rows)
+        models_rows = dedupe_model_rows(models_rows, brand, country)
+        if len(models_rows) != raw_total:
+            print(f"  [dupe] {brand}/{country} 官方重名条目去重：{raw_total} -> {len(models_rows)}", flush=True)
         bid = upsert_brand(brand, rec.get("query", {}).get("mode"))
         total = len(models_rows)
         attempted = 0
