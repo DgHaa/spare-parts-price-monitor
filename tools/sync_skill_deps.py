@@ -5,6 +5,7 @@
   - ~/.workbuddy/skills/spare-parts-price/references/kb/*.json   （各品牌抓取配方 KB）
   - ~/.workbuddy/skills/spare-parts-price/references/calibration/ （标定数据/脚本）
   - ~/.workbuddy/skills/spare-parts-price/scripts/normalize.py    （金额解析唯一实现）
+  - ~/.workbuddy/skills/spare-parts-price/scripts/executor.py     （抓取引擎：query.mode 各分支）
 
 本工具把它们拷进仓库的 references/ 与 vendor/。
 运行时代码已改为「仓库副本优先、skill 目录回退」，所以拷完即生效。
@@ -21,6 +22,15 @@
     切勿在本工具部署后随手跑 sync_skill_deps.py：它会用 skill 旧副本覆盖
     你在项目里新增/修改的 KB 条目（例如 apple/cn、vivo/cn、samsung/cn 曾因此
     被静默 [skip]）。本工具只应在「以 skill 为源、刷新仓库快照」时单向使用。
+
+⚠️ executor.py 的方向与 KB **相反**（2026-09-22 起）：
+    crawler/core.py 把 vendor/ 插在 sys.path **最前**，故 vendor/executor.py 优先于
+    skill 的 scripts/executor.py —— **仓库里那份才是运行时真源**（KB 则相反，skill 生效）。
+    所以：改 executor.py 请改 vendor/executor.py。
+    若本工具 --check 报 executor.py 漂移，说明 skill 侧那份被改过
+    （典型来源：自愈维护 Agent 按旧 prompt 去改 skill 的 executor.py —— 那种改动
+    **不会生效**，属于静默失效）。此时跑本工具即把 skill 的改动拉进 repo，
+    **但务必先 Read 确认该改动是否正确，再决定是否提交**。
 """
 from __future__ import annotations
 
@@ -38,7 +48,7 @@ JOBS = [
     (SKILL / "references" / "kb", ROOT / "references" / "kb", ["*.json"]),
     (SKILL / "references" / "calibration", ROOT / "references" / "calibration",
      ["*.json", "*_calibrate.py"]),
-    (SKILL / "scripts", ROOT / "vendor", ["normalize.py"]),
+    (SKILL / "scripts", ROOT / "vendor", ["normalize.py", "executor.py"]),
 ]
 
 
