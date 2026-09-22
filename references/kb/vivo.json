@@ -246,8 +246,8 @@
         "entry": {"url": "https://www.vivo.com/jp/support/accessory", "steps": [], "expect_url": "https://www.vivo.com/jp/support/accessory"},
         "query": {"mode": "vivo_api", "api": {"fetch_mode": "http", "concurrency": 6}},
         "evidence": {"captured_url": "https://www.vivo.com/jp/support/accessory", "captured_at": "2026-09-22", "api_verified_at": "2026-09-22"},
-        "status": "unverified", "reviewed": true, "updated_at": "2026-09-22",
-        "notes": "【2026-09-22 扩配】vivo 全球站通用 vivo_api(HTTP) 口径（vivo.com/{country}/support/accessory → queryPriceByProductId）。日站币种 JPY。"
+        "status": "unavailable", "reviewed": true, "updated_at": "2026-09-22",
+        "notes": "【2026-09-22 实测转 unavailable】vivo 日本站 /jp/support/accessory 实测 HTTP 404（全量日志：[warn] vivo_api: 备件页请求失败 HTTPError: HTTP 404；jp 备件页未解析出机型），该区域无备件价页，与 apple/tr 同类。改标 unavailable 后运行时按 skipped 记录（仍产生 run_log），不再反复 failed。"
       }
     ],
     "mx": [
@@ -256,8 +256,8 @@
         "entry": {"url": "https://www.vivo.com/mx/support/accessory", "steps": [], "expect_url": "https://www.vivo.com/mx/support/accessory"},
         "query": {"mode": "vivo_api", "api": {"fetch_mode": "http", "concurrency": 6}},
         "evidence": {"captured_url": "https://www.vivo.com/mx/support/accessory", "captured_at": "2026-09-22", "api_verified_at": "2026-09-22"},
-        "status": "unverified", "reviewed": true, "updated_at": "2026-09-22",
-        "notes": "【2026-09-22 扩配】vivo 全球站通用 vivo_api(HTTP) 口径。墨站币种 MXN。"
+        "status": "verified", "reviewed": true, "updated_at": "2026-09-22",
+        "notes": "【2026-09-22 扩配并实测转正】vivo 全球站 vivo_api(HTTP) 口径（vivo.com/mx/support/accessory → queryPriceByProductId）。全量实测 36 机型/324 条价（2026Q3，MXN）。"
       }
     ]
   }

@@ -871,10 +871,10 @@
           "captured_url": "https://support.apple.com/tr/iphone/repair",
           "captured_at": "2026-08-27T14:25"
         },
-        "status": "unverified",
+        "status": "unavailable",
         "reviewed": true,
         "updated_at": "2026-09-22",
-        "notes": "【2026-09-22 扩配】原 unavailable（Apple 不提供土耳其语区维修价页）。改为 unverified 让其真正尝试一次；若 /tr 页确实 404，本轮 0 机型→skipped 记录（非故障，与 unavailable 语义一致但会有 run_log）。"
+        "notes": "【2026-09-22 实测转 unavailable】Apple 不提供土耳其语区维修价页：全量实测 /tr/iphone|ipad|watch/repair 均 404 → 自动发现 0 机型，run_log=skipped。与 vivo/jp 同类。改标 unavailable 后运行时短路返回 skipped（仍产生 run_log），不再反复尝试。"
       }
     ],
     "cn": [
@@ -1183,10 +1183,10 @@
           "captured_url": "https://support.apple.com/es-mx/iphone/repair",
           "captured_at": "2026-09-22"
         },
-        "status": "unverified",
+        "status": "verified",
         "reviewed": true,
         "updated_at": "2026-09-22",
-        "notes": "【2026-09-22 扩配】Apple 墨西哥站（es-mx）维修价页。与 tr 同理可能 404/无工具；先标记 unverified 让其真正尝试一次，若确实无页则本轮 0 机型→skipped 记录消除灰格。"
+        "notes": "【2026-09-22 扩配并实测转正】Apple 墨西哥站（es-mx）维修价页真实可用，非 tr 那种 404：form_select_cascade 全量实测 phone 31 机型/177 条价、tablet 46 机型/92 条价、watch 若干，apple/mx 合计 455 行（2026Q3，MXN），并生成 31/31 机型级链接实测通过。西语标题『Costo estimado del servicio』。"
       },
       {
         "device_category": "tablet",
@@ -1245,10 +1245,10 @@
           "captured_url": "https://support.apple.com/es-mx/ipad/repair",
           "captured_at": "2026-09-22"
         },
-        "status": "unverified",
+        "status": "verified",
         "reviewed": true,
         "updated_at": "2026-09-22",
-        "notes": "【2026-09-22 扩配】Apple 墨西哥站（es-mx）iPad 维修价页。同 phone 口径尝试。"
+        "notes": "【2026-09-22 扩配并实测转正】Apple 墨西哥站（es-mx）iPad 维修价页，实测 46 机型/92 条价（2026Q3，MXN）。与 phone 同构（form_select_cascade），只换 URL。"
       },
       {
         "device_category": "watch",
@@ -1301,10 +1301,10 @@
           "captured_url": "https://support.apple.com/es-mx/watch/repair",
           "captured_at": "2026-09-22"
         },
-        "status": "unverified",
+        "status": "verified",
         "reviewed": true,
         "updated_at": "2026-09-22",
-        "notes": "【2026-09-22 扩配】Apple 墨西哥站（es-mx）Apple Watch 维修价页。同 phone 口径尝试。"
+        "notes": "【2026-09-22 扩配并实测转正】Apple 墨西哥站（es-mx）Apple Watch 维修价页，实测可取价（2026Q3，MXN）。与 phone 同构（form_select_cascade）。"
       }
     ]
   }
