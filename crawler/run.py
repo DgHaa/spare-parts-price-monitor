@@ -31,7 +31,12 @@ from db import (init_db, upsert_brand, upsert_country, upsert_model,  # noqa: E4
                 get_conn)
 
 # 抓取范围（全量设计）：models=None 表示尽量自动发现全部机型。
-# 华为国内外友商 6 家全覆盖；google 在本环境被墙(blocked)，其余在本机+代理可跑。
+# 华为国内外友商 5 家全覆盖（apple / oppo / samsung / vivo / xiaomi）。
+# google 已于 2026-09-22 移出 SCOPE：本环境无 Google Web 出口代理，其 7 国恒为 blocked，
+# 只会产出 rows_written=0 的 skipped 记录与「需真机/代理」噪音工单，且 DB 中无任何价格数据。
+# 如需恢复：把下方 google 块取消注释，并确保本机挂代理后跑
+#   python -m crawler.run --brand google --country <cc>
+# KB（references/kb/google.json）已保留，7 国配方可直接复用，无需重建。
 SCOPE = {
     # OPPO 已新增 cn（中国）：官网 2026 起备件价走新一代 REBORN 接口
     # （POST /basic/v1/getProduct + /basic/v1/getPartPriceNew，按 marketingModelCode 查询），
@@ -56,9 +61,10 @@ SCOPE = {
     "samsung":{"countries": ["de", "tr", "my", "jp", "ae", "cn", "mx"], "models": None,
                "country_names": {"de": "德国", "tr": "土耳其", "my": "马来西亚", "jp": "日本", "ae": "阿联酋", "cn": "中国",
                                  "mx": "墨西哥"}},
-    "google": {"countries": ["de", "jp", "ae", "my", "tr", "cn", "mx"], "models": None,
-               "country_names": {"de": "德国", "jp": "日本", "ae": "阿联酋", "my": "马来西亚", "tr": "土耳其",
-                                 "cn": "中国", "mx": "墨西哥"}},
+    # google 已移出（原因见上方注释）。如需恢复，取消下列 3 行注释并确认代理可用：
+    # "google": {"countries": ["de", "jp", "ae", "my", "tr", "cn", "mx"], "models": None,
+    #            "country_names": {"de": "德国", "jp": "日本", "ae": "阿联酋", "my": "马来西亚",
+    #                              "tr": "土耳其", "cn": "中国", "mx": "墨西哥"}},
 }
 
 # 各品牌×国家报价是否含税（1=含税/含VAT，0=税前）。本项目覆盖市场均为含税消费电子
