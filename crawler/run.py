@@ -67,6 +67,28 @@ SCOPE = {
     #                              "tr": "土耳其", "cn": "中国", "mx": "墨西哥"}},
 }
 
+
+def _ever_succeeded(brand: str, country: str) -> bool:
+    """该 brand/country 是否**曾经**成功抓到过数据（存在 status='success' 的 run_log）。
+
+    用途：区分两类"抓不到"——
+      · 从未成功过 → 环境性限制（无出口代理 / 官网无公开备件价工具），不是代码缺陷，
+                     不建待修工单，只留 run_log（否则自愈 Agent 每 6h 空转一轮）。
+      · 曾经成功过 → 疑似"曾可用→退化"的回归，仍建工单提醒（防回归被静默掩盖）。
+    """
+    try:
+        con = get_conn()
+        try:
+            row = con.execute(
+                "SELECT 1 FROM run_logs WHERE brand=? AND country=? AND status='success' LIMIT 1",
+                (brand, country)).fetchone()
+            return row is not None
+        finally:
+            con.close()
+    except Exception:
+        # 查不动就当"曾经成功过"——宁可多建一条工单，也不静默吞掉潜在回归。
+        return True
+
 # 各品牌×国家报价是否含税（1=含税/含VAT，0=税前）。本项目覆盖市场均为含税消费电子
 # 报价（欧盟 VAT、土耳其/中国/马来/阿联酋/墨西哥/日本均含税），个别净价市场（如美国）
 # 未纳入范围。如需精确口径请按官网校准。
@@ -1009,7 +1031,14 @@ async def crawl_brand_country(browser, brand, country, country_name, models_seed
         _log_run(brand, country, quarter, started, datetime.now().isoformat(timespec="seconds"),
                 "skipped", 0, st)
         logged = True
-        add_issue(brand, country, f"KB 状态={st}：需真机/代理或官网无工具，本环境无法抓取")
+        # 2026-09-22：环境性限制不再建工单。KB 标 blocked/unavailable 是**人工研判过的环境结论**
+        # （本机无出口代理 / 官网无公开备件价工具），不是抓取代码的缺陷——每 6h 触发的自愈 Agent
+        # 对它无能为力，只会反复"诊断→修不了→保留 open"，纯空转。
+        # 用 _ever_succeeded 兜住回归：从未成功过 = 环境限制，静默跳过；
+        # 曾经成功过 = 疑似"曾可用→退化"，仍建单，避免回归被这次改动掩盖。
+        if _ever_succeeded(brand, country):
+            add_issue(brand, country,
+                      f"KB 状态={st}，但该区域曾有成功记录 → 疑似回归（曾可用→退化），需排查")
         return ("skipped", 0, st)
     # samsung_api：服务端 HTTP 直采（DE=seg.apix.de REST / MY=Azure 估价 API），无需浏览器/Playwright
     if rec.get("query", {}).get("mode") == "samsung_api":
