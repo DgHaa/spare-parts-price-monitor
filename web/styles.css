@@ -136,6 +136,11 @@ select,input{height:36px;border:1px solid var(--line);border-radius:9px;padding:
 .heat th{background:transparent;color:var(--muted);font-weight:600;text-align:center;position:static}
 .heat td{text-align:center;padding:10px 8px;border-radius:8px;font-variant-numeric:tabular-nums;font-weight:600}
 .heat .rowlabel{text-align:right;color:var(--ink);font-weight:600;background:transparent}
+/* 行标签里的规格徽标：同一备件按存储规格拆成多行（8G+128G/12G+512G…）是正确分组，
+   但规格不上屏会让这些行看起来像重复行，故显式标出 */
+.heat .rowlabel .spectag{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:6px;
+  font-size:11px;font-weight:600;color:var(--muted);background:var(--bg-soft);
+  border:1px solid var(--line);letter-spacing:0;vertical-align:1px}
 /* 模式②：品类分组标题行（其下为各规范件名） */
 .heat .catrow td{background:transparent;text-align:left;color:var(--muted);font-size:12px;
   font-weight:700;letter-spacing:.05em;padding:14px 8px 4px;border-radius:0;

@@ -1,7 +1,18 @@
 #!/usr/bin/env python3
 """oppo_multi_calibrate.py - OPPO 多区域备件价格 API 校准（基于已验证的 TR 方案，跨域复用 sgp 节点）。
 
-关键结论（本环境实测）：
+!! 已知不可信，默认拒绝运行（2026-09-22 修订）!!
+  本脚本依据的是 OPPO **遗留端点** /cnw/v1/GetPartPrice。该端点服务端**完全忽略 area
+  参数**：de/mx/my/jp/ae 各国拿到的都是同一份中国大陆 CNY 价目表（实测 6 国 1844 个
+  公共 (机型,备件) 键的价格集合指纹全部相等）。用它标定，只会把「CN 价被误标成本地
+  币种」这个错误反向“验证”成正确结论——历史上正是它产出了 13836 行污染数据，并在
+  比价页制造出 37 倍的假价差（+3614%）。
+  现行正确信源是 REBORN 接口 POST /basic/v1/getProduct + getPartPriceNew，见
+  references/kb/oppo.json 的 api_reborn 配置；数据清退见
+  tools/purge_oppo_area_param_pollution.py。
+  确需复现历史结论，请显式加 --i-know-this-endpoint-is-broken。
+
+关键结论（本环境实测，**其中「用 area 参数切换区域」一条已被证伪**）：
   - 各区域页的支持页(spare-parts-price) curl 均 200，但部分区域 headless 下 SPA 未注入 SOWAPIPATH；
   - 真实价格 API 由 **sgp-sow-cms.oppo.com/oppo-server** 统一承载，用 area 参数切换区域，
     par-sow-cms(巴黎) 等区域节点从沙箱不可达(000/504)。
@@ -101,13 +112,28 @@ async def main(out):
     return doc
 
 
+_LEGACY_BANNER = """[已知不可信 — 默认拒绝运行]
+本脚本基于 OPPO 遗留端点 /cnw/v1/GetPartPrice 标定。该端点服务端**忽略 area 参数**，
+de/mx/my/jp/ae 各国返回的都是同一份中国大陆 CNY 价目表（2026-09-22 实测 6 国 1844 个
+公共 (机型,备件) 键价格指纹全等）。用它标定只会把「CN 价被误标成本地币种」反向
+"验证"成正确——历史上正是它产出了 13836 行污染数据。
+现行正确信源：REBORN 接口，见 references/kb/oppo.json 的 api_reborn 配置。
+确需复现历史结论，加 --i-know-this-endpoint-is-broken 显式确认。
+"""
+
+
 def run():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=str(HERE / "oppo_multi_api.json"))
+    ap.add_argument("--i-know-this-endpoint-is-broken", action="store_true",
+                    help="确认已知该端点不可信（area 被忽略），仍要运行以复现历史结论")
     args = ap.parse_args()
+    if not args.i_know_this_endpoint_is_broken:
+        print(_LEGACY_BANNER)
+        return 2
     import asyncio
     asyncio.run(main(args.out))
 
 
 if __name__ == "__main__":
-    run()
+    sys.exit(run())

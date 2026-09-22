@@ -97,15 +97,40 @@ def archive(cur):
     return n_m, n_p, n_s
 
 
-def restore(cur):
-    for t, src in ((T_S, "price_snapshots"), (T_P, "parts"), (T_M, "models")):
-        cur.execute(f"insert or ignore into {src} select * from {t}")
+def restore(cur, force_polluted=False):
+    """把归档行还原回主表。
+
+    !! 默认不还原「已知污染」行 !!（2026-09-22 修订）
+      归档表里那 13836 行 legacy 快照，来源是 OPPO 遗留端点 /cnw/v1/GetPartPrice ——
+      该端点服务端忽略 area 参数，各国返回的都是中国大陆 CNY 价目表，被旧爬虫误标成
+      当地币种（2690 CNY 写成 2690 EUR/TRY…），折 CNY 后制造出 37 倍的假价差。
+      它们是**证据**，不是数据；还原回去只会重新污染线上比价页。
+      确需还原（例如要复查取证），加 --force-restore-polluted 显式确认。
+    """
+    skipped = 0
+    if not force_polluted:
+        skipped = cur.execute(
+            f"select count(*) from {T_S} where source_url like '%cnw/v1/GetPartPrice?%'"
+        ).fetchone()[0]
+        cur.execute(f"""insert or ignore into price_snapshots
+                        select * from {T_S} where source_url not like '%cnw/v1/GetPartPrice?%'""")
+        for t, src in ((T_P, "parts"), (T_M, "models")):
+            cur.execute(f"insert or ignore into {src} select * from {t}")
+    else:
+        for t, src in ((T_S, "price_snapshots"), (T_P, "parts"), (T_M, "models")):
+            cur.execute(f"insert or ignore into {src} select * from {t}")
+    if skipped:
+        print(f"[warn] 已跳过 {skipped} 行已知污染快照（OPPO 遗留端点 area 被忽略）。"
+              f"如确要还原，加 --force-restore-polluted。")
+        print(f"[note] parts/models 仍按全量还原（它们是机型/备件登记表，本身不含价格）；"
+              f"被跳过快照对应的 parts 会变成零快照孤儿行，"
+              f"如需清理重跑 tools/purge_oppo_area_param_pollution.py。")
     return (cur.execute(f"select count(*) from {T_M}").fetchone()[0],
             cur.execute(f"select count(*) from {T_P}").fetchone()[0],
             cur.execute(f"select count(*) from {T_S}").fetchone()[0])
 
 
-def main(mode):
+def main(mode, force_polluted=False):
     c = sqlite3.connect(DB)
     cur = c.cursor()
     if mode == "status":
@@ -127,7 +152,7 @@ def main(mode):
         print(f"[execute] 已归档并移出主表：models={n_m} parts={n_p} snapshots={n_s}")
         status(cur)
     elif mode == "restore":
-        n_m, n_p, n_s = restore(cur)
+        n_m, n_p, n_s = restore(cur, force_polluted=force_polluted)
         c.commit()
         print(f"[restore] 已从归档还原（表内计数 models={n_m} parts={n_p} snapshots={n_s}）")
         status(cur)
@@ -139,5 +164,8 @@ if __name__ == "__main__":
     g = ap.add_mutually_exclusive_group(required=True)
     for m in ("dry-run", "execute", "status", "restore"):
         g.add_argument(f"--{m}", action="store_true")
+    ap.add_argument("--force-restore-polluted", action="store_true",
+                    help="还原时连「已知污染」快照一起还原（默认跳过，防重新污染比价页）")
     a = ap.parse_args()
-    main(next(m for m in ("dry-run", "execute", "status", "restore") if getattr(a, m.replace("-", "_"))))
+    main(next(m for m in ("dry-run", "execute", "status", "restore") if getattr(a, m.replace("-", "_"))),
+         force_polluted=a.force_restore_polluted)

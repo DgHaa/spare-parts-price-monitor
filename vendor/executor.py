@@ -1213,7 +1213,63 @@ async def google_estimator(page, query, model, part, country="de"):
     return rows
 
 
+# ── 已知不可信端点：硬阻断 ────────────────────────────────────────────────
+# 有些端点**服务端忽略区域参数**：无论请求哪个 area，都返回同一份价格表。上层若按
+# 「请求的 area」把它标成本地币种，再乘当地汇率折 CNY，就会把同一个原始数字放大成
+# 数十倍的虚假跨国价差，且**不报错**——静默产出一整库看似正常的脏数据。
+#
+# 2026-09-22 实测：OPPO 遗留端点 sgp-sow-cms.oppo.com/oppo-server/cnw/v1/GetPartPrice
+# 对 ae/de/jp/mx/my/tr 返回逐字节相同的中国大陆 CNY 价目表（6 国 1844 个公共
+# (机型,备件) 键的价格集合指纹全部相等 = ece41d8aadf54a83；响应体里也没有任何币种
+# 字段）。后果：2690 CNY 被写成 2690 EUR 与 2690 TRY，折 CNY 后 20982 vs 564.9，
+# 同一数字被汇率放大 37 倍，前台显示「+3614%」的假价差。
+# 已据此清退 13836 行污染数据（见 tools/purge_oppo_area_param_pollution.py）。
+# 保留本阻断，防止配置回填后再次静默污染。
+_BLOCKED_ENDPOINTS = (
+    ("/cnw/v1/GetPartPrice?",
+     "OPPO 遗留端点：服务端忽略 area 参数，各国均返回中国大陆 CNY 价目表"),
+)
+
+# 这些 key 的值是「说明文本」而非「要请求的 URL」；文案里出现端点名属正常的历史沿革
+# 记录（如 KB 的 note 明确写着「旧端点已弃用」），扫进去会误伤。
+_PROSE_KEYS = frozenset({"note", "notes", "model_match_note", "labor_note",
+                         "screenshot", "evidence_note", "remark"})
+
+
+def blocked_endpoint_hit(query):
+    """扫描配置中所有「作为数据来源的 URL」，命中已知不可信端点则返回 (pattern, reason)。
+
+    只扫 URL 语义的字符串，跳过 note/notes 等纯说明字段（见 _PROSE_KEYS）。
+    """
+    hits = []
+
+    def _walk(o, in_prose=False):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                _walk(v, in_prose or k in _PROSE_KEYS)
+        elif isinstance(o, list):
+            for v in o:
+                _walk(v, in_prose)
+        elif isinstance(o, str) and not in_prose:
+            hits.append(o)
+
+    _walk(query)
+    for s in hits:
+        for pat, reason in _BLOCKED_ENDPOINTS:
+            if pat in s:
+                return pat, reason
+    return None
+
+
 async def run_query(page, query, model, part, country="de"):
+    # 数据来源可信度闸门：先于一切抓取动作。命中即拒绝执行，避免静默写入脏数据。
+    hit = blocked_endpoint_hit(query)
+    if hit:
+        pat, reason = hit
+        return [{"cells": [f"BLOCKED: 配置指向已知不可信端点 {pat} —— {reason}；"
+                           f"请改用信源（OPPO 走 api_reborn），详见 "
+                           f"tools/purge_oppo_area_param_pollution.py"],
+                 "price": None, "model": model}]
     mode = query.get("mode")
     if page is not None:
         await page.wait_for_timeout(1200)

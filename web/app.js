@@ -601,7 +601,7 @@
       html += '<div class="grp"><div class="grp-title">📦 规格 <b>' + esc(specLabel) + '</b> · 颜色 <b>' + esc(colorLabel) +
         '</b> · 版本 <b>' + esc(editionLabel) + '</b>（覆盖 ' + countries.length + ' 国）</div>';
       if (!(g.parts || []).length) { html += '<div class="empty">该配置暂无价格</div></div>'; return; }
-      html += '<div class="scroll"><table class="heat"><thead><tr><th class="rowlabel">规范品类 / 备件</th>';
+      html += '<div class="scroll"><table class="heat"><thead><tr><th class="rowlabel">规范品类 / 备件（规格）</th>';
       countries.forEach(c => html += `<th>${cn(c)}</th>`);
       html += '<th>最低国</th><th>最高国</th><th>价差</th></tr></thead><tbody>';
       (g.parts || []).forEach(p => {
@@ -609,7 +609,14 @@
         const valid = vals.filter(v => v != null);
         if (!valid.length) return;
         const lo = Math.min(...valid), hi = Math.max(...valid), span = (hi - lo) || 1;
-        html += `<tr><td class="rowlabel">${esc(p.cat)}<br><small class="muted">${esc(p.part)}</small></td>`;
+        // 行标签必须带上「规格」。同一备件会按存储规格拆成多行（8G+128G / 8G+256G /
+        // 12G+256G / 12G+512G），这是分组键 (品类,件名,规格) 的正确行为——数据没错；
+        // 但若行标签只画 cat+part，五行主板会全部渲染成「主板 / 主板」，看起来像重复行。
+        // 另：cat 与 part 相同时（主板/主板、电池/电池）不再重复输出第二行，避免噪音。
+        const specTag = p.spec ? `<span class="spectag">${esc(p.spec)}</span>` : "";
+        const subPart = (p.part && p.part !== p.cat)
+          ? `<br><small class="muted">${esc(p.part)}</small>` : "";
+        html += `<tr><td class="rowlabel">${esc(p.cat)}${specTag}${subPart}</td>`;
         let loC = "", hiC = "";
         countries.forEach((c, i) => {
           const v = vals[i];
@@ -650,7 +657,13 @@
           const bandMark = _bi ? ` <sup class="band" title="${esc(_bi.tip)}">⚖档</sup>` : "";
           // 单元格可点击下钻：展示本平台实际抓取到的该机型+国家+规格明细（准确，不依赖外部误导页）
           const oc = `onclick="openCompareDetail('${escAttr(c)}','${escAttr(specLabel)}','${escAttr(colorLabel)}','${escAttr(editionLabel)}')"`;
-          html += `<td class="cell-click" style="background:${heatColor(t)}" title="${esc(tip)}" ${oc}>${fmt(v)}<br><small class="muted">${esc(cur)}${src}${nosplit}${seedBadge}</small>${laborBadge}${bandMark}</td>`;
+          // 单元格口径：主数字是 **CNY 折算值**（表头「单元格=CNY」、底色排序都基于它），
+          // 故小字必须写 CNY。历史 bug：小字直接输出原币币种码，导致「数字是 CNY、
+          // 标签却是外币」——日本格显示 2,947 JPY，实为 2,947 CNY（原币 68,200 JPY），
+          // 把本来正确的跨区域数据也显得像脏数据。原币价改用 ≈ 跟随其后。
+          const isCny = (cur === "CNY");
+          const oriTxt = isCny ? "" : ` ≈ ${fmt(raw, 2)} ${esc(cur)}`;
+          html += `<td class="cell-click" style="background:${heatColor(t)}" title="${esc(tip)}" ${oc}>${fmt(v)}<br><small class="muted">CNY${oriTxt}${src}${nosplit}${seedBadge}</small>${laborBadge}${bandMark}</td>`;
         });
         const diff = lo ? Math.round((hi - lo) / lo * 100) : 0;
         html += `<td>${esc(loC)}</td><td>${esc(hiC)}</td><td>${diff > 0 ? "+" + diff + "%" : "—"}</td></tr>`;
