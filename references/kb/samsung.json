@@ -348,6 +348,18 @@
         "updated_at": "2026-09-21",
         "notes": "服务端直采（2026-09-21）：三星中国包外零配件价走公开 REST /rest/scic/open/spare-part-price/*。机型候选 GET /models?searchVal=<型号码>（返回机型码+25 颜色变体码；基类码直接查价返回空，必须取颜色变体码）；价表 GET /list?model=<颜色变体码>&part=<主板,屏,尾插,后盖,电池,摄像头>（中文部件名逗号拼接，来自 LEGO 码表 csui.prod-type.phone.parts）。响应 result=[{部件名:[{PART_CODE,PART_DESC,PART_PRICE,WAERS:CNY}]}]，同类目取首个（主件）为代表。价格已是 CNY，无独立人工费字段（官网单列总维修价）。颜色变体间备件码一致，取首个变体为代表（避免 25× 行膨胀）。实测 Galaxy S24：主板 2420 / 屏幕 889.96 / 充电口 118.48 / 后盖 135 / 电池 140 / 摄像头 151.61（CNY）。source_url_kind=brand_entry（取证链接即 list 接口）。seed_models 为近期 Galaxy S 系列机型码，可按需扩展。"
       }
+    ],
+    "mx": [
+      {
+        "device_category": "phone",
+        "locale": "es-MX",
+        "currency": "MXN",
+        "entry": {"url": "https://www.samsung.com/mx/support/", "steps": [], "expect_url": ""},
+        "query": {"mode": "samsung_api", "api": {"type": "mx_estimator", "note": "三星墨西哥无公开备件价取价接口（samsung_api 仅实现 de/my/ae/tr/jp/cn）。type=mx_estimator 未实现→运行时 RuntimeError→failed 记录，无数据污染。"}},
+        "evidence": {"captured_url": "https://www.samsung.com/mx/support/", "captured_at": "2026-09-22"},
+        "status": "unverified", "reviewed": true, "updated_at": "2026-09-22",
+        "notes": "【2026-09-22 扩配】三星墨西哥站无备件价工具（samsung_api 无 mx 实现）。保留条目以便覆盖矩阵有记录；运行时将以 failed 记录标记（非故障）。如需转正需新增 crawler/samsung_api.py 的 fetch_mx。"
+      }
     ]
   }
 }

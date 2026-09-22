@@ -195,6 +195,28 @@
         "updated_at": "2026-09-22",
         "notes": "【2026-08-29T14:27 校准失败】Page.goto: net::ERR_CONNECTION_TIMED_OUT at https://store.google.com/tr/repair-cost-estimator?hl=tr\nCall log:\n  - navigating to \"https://store.google.com/tr/repair-cost-estimator?hl=tr\", waiting until \"commit\"\n。请检查本机网络/Google 可达性后重跑本脚本。\n【2026-09-07T08:35 自愈复测】本沙箱对 store.google.com 五国均不可达：urllib 直连 timeout + MCP WebFetch fetch failed；与 2026-08-29 校准失败(ERR_CONNECTION_TIMED_OUT/Timeout 30000ms)一致，确认为环境无 Google Web 出口代理，非代码/选择器缺陷。google_estimator 模式代码已就绪，保持 blocked；待在可访问 Google 的机器 set HTTPS_PROXY 后跑校准脚本转正（注意：KB 中 explorer_script 指向的 references/calibration/google_calibrate.py 在本项目不存在，真实脚本位于 skill 目录）。\n【2026-09-07T14:38 自愈复测】urllib 直连 store.google.com 五国均 36s 超时(timeout)，与 08:35 复测及 2026-08-29 校准失败(ERR_CONNECTION_TIMED_OUT)一致，确认为沙箱环境无 Google Web 出口代理，非代码/选择器缺陷；google_estimator 代码就绪，维持 blocked/open，待真实 IP 环境(set HTTPS_PROXY)跑校准脚本 google_calibrate.py 转正。\n【2026-09-08T08:55 自愈复测】urllib 直连 store.google.com 五国均约60s超时(timeout, 沙箱网络层在 Python 20s 超时之上仍挂起), 与2026-09-07两次复测及2026-08-29校准失败一致, 确认沙箱无 Google Web 出口代理, 非代码/选择器缺陷; google_estimator 代码就绪, 维持 blocked/open, 待真实IP环境(set HTTPS_PROXY)跑校准脚本 google_calibrate.py 转正。\n【2026-09-09 自愈复测】urllib 直连 store.google.com 五国均 timeout（env 无 HTTPS_PROXY/HTTP_PROXY，沙箱网络层挂起），与 2026-08-29 校准失败及历次自愈复测一致，确认无 Google Web 出口代理，非代码/选择器缺陷；google_estimator 代码就绪，维持 blocked/open，待真实 IP 环境 set HTTPS_PROXY 后跑 skill 目录 references/calibration/google_calibrate.py 校准五国并自动转正。\n【2026-09-10 自愈复测】urllib 直连 store.google.com 五国均 30s 超时(timeout, HTTPS_PROXY=None, 沙箱网络层挂起)，与 2026-08-29 校准失败及 2026-09-02~09-09 历次自愈复测一致，确认无 Google Web 出口代理，非代码/选择器缺陷；google_estimator 代码就绪，维持 blocked/open，待真实 IP 环境 set HTTPS_PROXY 后跑 skill 目录 references/calibration/google_calibrate.py 校准五国并自动转正。\n【2026-09-11 自愈复测】新信号：urllib 直连 DNS 解析正常、TCP 443 现可连通，但 TLS 握手被对端重置(SSL: UNEXPECTED_EOF_WHILE_READING, 25.7s 失败)；MCP WebFetch 亦 fetch failed。失败模式由「TCP 全超时」转为「TLS 被中断」，仍确认沙箱无可用 Google Web 出口，非代码/选择器/反爬缺陷；google_estimator 代码就绪，维持 blocked/open 待真实 IP 环境 set HTTPS_PROXY 后跑校准脚本转正。\n【2026-09-14 自愈复测】新探针：HTTPS_PROXY/HTTP_PROXY 均为空；DNS 解析正常(store.google.com→64.233.188.100)但 TCP 443 直连 20s 超时(TimeoutError)；与 2026-09-11T14:58(同模式 TCP 超时)及历次校准失败一致，确认沙箱无 Google Web 出口代理，非代码/选择器/反爬缺陷；google_estimator 代码就绪，维持 blocked/open，待真实 IP 环境 set HTTPS_PROXY 后跑 skill 目录 references/calibration/google_calibrate.py 校准五国并自动转正。\n【2026-09-17 自愈复测】TCP 层探针：DNS 解析正常(store.google.com→74.125.203.101)，但五国 TCP 443 直连均 60s 超时(TimeoutError)；HTTPS_PROXY/HTTP_PROXY 均为 None。失败模式为「TCP 全超时」，与 2026-08-29 校准失败及 2026-09-02~09-14 历次自愈复测一致→ 确认沙箱无 Google Web 出口代理，非代码/选择器/反爬/API 参数变更缺陷；google_estimator 代码就绪，维持 blocked/open，待真实 IP 环境 set HTTPS_PROXY 后跑 skill 目录 references/calibration/google_calibrate.py 校准五国并自动转正。\n【2026-09-18 自愈复测】TCP 443 直连 store.google.com 五国均超时(timeout, HTTPS_PROXY=None, 沙箱网络层挂起)，与 2026-08-29 校准失败及历次自愈复测一致，确认沙箱无 Google Web 出口代理，非代码/选择器/反爬/API 参数变更缺陷；google_estimator 代码就绪，维持 blocked/open，待真实 IP 环境 set HTTPS_PROXY 后跑 skill 目录 references/calibration/google_calibrate.py 校准五国并自动转正。\n【2026-09-20 自愈复测】直连 store.google.com 五国均 36s 超时(timed out)；经本机代理 127.0.0.1:52304 亦 502 Bad Gateway（对照：同代理对 api.github.com 放行200，故为按域白名单拦截 Google，非代理宕机），确认为本环境无 Google Web 出口、非代码/选择器/API 参数变更缺陷；google_estimator 代码已就绪，维持 blocked/open，待在 Google 可达环境 set HTTPS_PROXY 后跑 skill 目录 references/calibration/google_calibrate.py 校准五国并自动转正。\n【2026-09-21 自愈复测】TCP 443 直连 store.google.com 五国均超时(TimeoutError, 12s)，DNS 正常解析(64.233.189.102)，HTTPS_PROXY/HTTP_PROXY 均为 None；与历次一致，确认沙箱无 Google Web 出口代理，非代码/选择器/反爬/API 参数变更缺陷；google_estimator 代码就绪，维持 blocked/open，待真实 IP 环境 set HTTPS_PROXY 后跑 skill 目录 references/calibration/google_calibrate.py 校准五国并自动转正。\n【2026-09-22 自愈复测】DNS 正常(142.250.157.101)，TCP 443 直连五国均 36s 超时(TimeoutError)；HTTPS_PROXY/HTTP_PROXY 为 None → 沙箱无 Google Web 出口，非代码/选择器/反爬缺陷，保持 blocked 待真实 IP 环境校准。"
       }
+    ],
+    "cn": [
+      {
+        "device_category": "phone", "locale": "zh-CN", "currency": "CNY",
+        "entry": {"url": "https://store.google.com/cn/repair-cost-estimator?hl=zh-CN", "steps": [], "expect_url": "https://store.google.com/cn/repair-cost-estimator?hl=zh-CN"},
+        "query": {"mode": "google_estimator", "cascade": [{"field": "model", "label": "机型"}], "price_locator": "table", "explorer_script": "references/calibration/google_calibrate.py"},
+        "extract": {"cols": {"model": "机型", "part": "损坏类型", "price": "价格"}},
+        "evidence": {"captured_url": "https://store.google.com/cn/repair-cost-estimator?hl=zh-CN", "captured_at": "2026-09-22"},
+        "status": "blocked", "reviewed": true, "updated_at": "2026-09-22",
+        "notes": "【2026-09-22 扩配】与 google 其余五国一致：本沙箱无 Google Web 出口代理，保持 blocked；run.py 对 blocked 仍写 skipped run_log，故覆盖矩阵有记录。待可访问 Google 的机器 set HTTPS_PROXY 后跑校准脚本转正。"
+      }
+    ],
+    "mx": [
+      {
+        "device_category": "phone", "locale": "es-MX", "currency": "MXN",
+        "entry": {"url": "https://store.google.com/mx/repair-cost-estimator?hl=es-MX", "steps": [], "expect_url": "https://store.google.com/mx/repair-cost-estimator?hl=es-MX"},
+        "query": {"mode": "google_estimator", "cascade": [{"field": "model", "label": "机型"}], "price_locator": "table", "explorer_script": "references/calibration/google_calibrate.py"},
+        "extract": {"cols": {"model": "机型", "part": "损坏类型", "price": "价格"}},
+        "evidence": {"captured_url": "https://store.google.com/mx/repair-cost-estimator?hl=es-MX", "captured_at": "2026-09-22"},
+        "status": "blocked", "reviewed": true, "updated_at": "2026-09-22",
+        "notes": "【2026-09-22 扩配】与 google 其余五国一致：本沙箱无 Google Web 出口代理，保持 blocked；run.py 对 blocked 仍写 skipped run_log，故覆盖矩阵有记录。待可访问 Google 的机器 set HTTPS_PROXY 后跑校准脚本转正。"
+      }
     ]
   }
 }

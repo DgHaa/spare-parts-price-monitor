@@ -106,6 +106,102 @@
         },
         "notes": "【2026-09-17 改走官方 JSONP 接口】原 DOM 点选路径（xiaomi_material_table）实测跑到一半 Page crashed、943 台耗时 946~1059s 仍 0 行落库，且人工费列从未成功（has_labor_split 全 0），已弃用；该 mode 函数保留，仅作历史回放/对照。现用 shop_class_info 一次拿全站分类树（L1 品类→L2 系列→L3 具体型号，共 3671 个 L3；其中『小米手机』=943 个，与平台既有口径一致），再按 L3 的 class_id 请求 shop_band_wx_price 取该 SKU 价表。接口为 JSONP，必须带 callback 参数（否则返回 code=-30005『jsonp没有传入callback』）。价表字段：sale_price=保外物料指导价（元）、handwork_cost=保外人工指导价（元），总价=两者之和，人工费可如实单列取证；out_warranty_price 恒为 0，不是物料价，勿用。code=14『该产品暂无相关数据』= 官方本就没这台机的价（noprice，非故障）。实测 100 台并发 8 仅 5.2s、0 报错，943 台约 48s，全程无需浏览器、不占浏览器池。页面 HTML 内联的 `var $DATA`（机型→备件下拉树）**不含价格**，只有选中型号后才请求价格接口，故不作为抓取入口。 【2026-09-18 扩品类】原 categories 只写 [\"小米手机\"]（943 台），漏掉官方分类树里的 **Redmi手机 1317 台**（同为手机，是比品类问题更大的缺口）与**智能穿戴及耳机 173 台**（手表/耳机，按用户确认的全品类口径应收）。已扩为 [小米手机,Redmi手机,智能穿戴及耳机]，合计 2433 台。⚠️「电脑办公」L1 里平板与笔记本混在一起，用 series_filter 只收平板（排除 292 台笔记本）。未收：智能电视212/大家电260/电脑办公469/智能家居184/厨房电器87/车载出行16/消费电子10 ——与手机备件比价无关，纳入会淹没大盘，待业务确认。⚠️ 全品类口径下必须按 models.category 分组比价（平板屏幕 ≠ 手机屏幕）。"
       }
+    ],
+    "de": [
+      {
+        "device_category": "phone", "locale": "de-DE", "currency": "EUR",
+        "entry": {"url": "https://www.mi.com/de/service/materialprice", "steps": [], "expect_url": "https://www.mi.com/de/service/materialprice"},
+        "query": {"mode": "xiaomi_api", "categories": ["小米手机", "Redmi手机", "智能穿戴及耳机", "电脑办公"],
+                  "api": {"service_api": "https://www.mi.com/de", "fetch_mode": "http", "concurrency": 8,
+                          "class_tree": "/repair_price/shop_class_info?keyword=&callback=cb",
+                          "class_price": "/repair_price/shop_band_wx_price?class_id={class_id}&callback=cb",
+                          "note": "小米备件价接口(api2.service.order.mi.com)仅中国可用；非 cn 国家无对应接口，service_api 指向 regional mi 域名（无 /repair_price 路径）→ 取价失败→failed 记录，避免把 cn 数据误写成本国。"},
+                  "series_filter": {"电脑办公": ["平板", "Pad"]}},
+        "extract": {"cols": {"part": 0, "material_price": 1, "labor_price": 2}},
+        "evidence": {"captured_url": "https://www.mi.com/de/service/materialprice", "captured_at": "2026-09-22"},
+        "status": "unverified", "reviewed": true, "updated_at": "2026-09-22",
+        "notes": "【2026-09-22 扩配】小米备件价接口仅中国(api2.service.order.mi.com)可用，de 无对应接口。保留条目以便覆盖矩阵有记录；运行时以 failed 记录标记（非故障，无数据污染）。如需转正需为 de 实现区域接口。"
+      }
+    ],
+    "tr": [
+      {
+        "device_category": "phone", "locale": "tr-TR", "currency": "TRY",
+        "entry": {"url": "https://www.mi.com/tr/service/materialprice", "steps": [], "expect_url": "https://www.mi.com/tr/service/materialprice"},
+        "query": {"mode": "xiaomi_api", "categories": ["小米手机", "Redmi手机", "智能穿戴及耳机", "电脑办公"],
+                  "api": {"service_api": "https://www.mi.com/tr", "fetch_mode": "http", "concurrency": 8,
+                          "class_tree": "/repair_price/shop_class_info?keyword=&callback=cb",
+                          "class_price": "/repair_price/shop_band_wx_price?class_id={class_id}&callback=cb",
+                          "note": "小米备件价接口(api2.service.order.mi.com)仅中国可用；非 cn 国家无对应接口，service_api 指向 regional mi 域名（无 /repair_price 路径）→ 取价失败→failed 记录，避免把 cn 数据误写成本国。"},
+                  "series_filter": {"电脑办公": ["平板", "Pad"]}},
+        "extract": {"cols": {"part": 0, "material_price": 1, "labor_price": 2}},
+        "evidence": {"captured_url": "https://www.mi.com/tr/service/materialprice", "captured_at": "2026-09-22"},
+        "status": "unverified", "reviewed": true, "updated_at": "2026-09-22",
+        "notes": "【2026-09-22 扩配】小米备件价接口仅中国(api2.service.order.mi.com)可用，tr 无对应接口。保留条目以便覆盖矩阵有记录；运行时以 failed 记录标记（非故障，无数据污染）。如需转正需为 tr 实现区域接口。"
+      }
+    ],
+    "my": [
+      {
+        "device_category": "phone", "locale": "ms-MY", "currency": "MYR",
+        "entry": {"url": "https://www.mi.com/my/service/materialprice", "steps": [], "expect_url": "https://www.mi.com/my/service/materialprice"},
+        "query": {"mode": "xiaomi_api", "categories": ["小米手机", "Redmi手机", "智能穿戴及耳机", "电脑办公"],
+                  "api": {"service_api": "https://www.mi.com/my", "fetch_mode": "http", "concurrency": 8,
+                          "class_tree": "/repair_price/shop_class_info?keyword=&callback=cb",
+                          "class_price": "/repair_price/shop_band_wx_price?class_id={class_id}&callback=cb",
+                          "note": "小米备件价接口(api2.service.order.mi.com)仅中国可用；非 cn 国家无对应接口，service_api 指向 regional mi 域名（无 /repair_price 路径）→ 取价失败→failed 记录，避免把 cn 数据误写成本国。"},
+                  "series_filter": {"电脑办公": ["平板", "Pad"]}},
+        "extract": {"cols": {"part": 0, "material_price": 1, "labor_price": 2}},
+        "evidence": {"captured_url": "https://www.mi.com/my/service/materialprice", "captured_at": "2026-09-22"},
+        "status": "unverified", "reviewed": true, "updated_at": "2026-09-22",
+        "notes": "【2026-09-22 扩配】小米备件价接口仅中国(api2.service.order.mi.com)可用，my 无对应接口。保留条目以便覆盖矩阵有记录；运行时以 failed 记录标记（非故障，无数据污染）。如需转正需为 my 实现区域接口。"
+      }
+    ],
+    "jp": [
+      {
+        "device_category": "phone", "locale": "ja-JP", "currency": "JPY",
+        "entry": {"url": "https://www.mi.com/jp/service/materialprice", "steps": [], "expect_url": "https://www.mi.com/jp/service/materialprice"},
+        "query": {"mode": "xiaomi_api", "categories": ["小米手机", "Redmi手机", "智能穿戴及耳机", "电脑办公"],
+                  "api": {"service_api": "https://www.mi.com/jp", "fetch_mode": "http", "concurrency": 8,
+                          "class_tree": "/repair_price/shop_class_info?keyword=&callback=cb",
+                          "class_price": "/repair_price/shop_band_wx_price?class_id={class_id}&callback=cb",
+                          "note": "小米备件价接口(api2.service.order.mi.com)仅中国可用；非 cn 国家无对应接口，service_api 指向 regional mi 域名（无 /repair_price 路径）→ 取价失败→failed 记录，避免把 cn 数据误写成本国。"},
+                  "series_filter": {"电脑办公": ["平板", "Pad"]}},
+        "extract": {"cols": {"part": 0, "material_price": 1, "labor_price": 2}},
+        "evidence": {"captured_url": "https://www.mi.com/jp/service/materialprice", "captured_at": "2026-09-22"},
+        "status": "unverified", "reviewed": true, "updated_at": "2026-09-22",
+        "notes": "【2026-09-22 扩配】小米备件价接口仅中国(api2.service.order.mi.com)可用，jp 无对应接口。保留条目以便覆盖矩阵有记录；运行时以 failed 记录标记（非故障，无数据污染）。如需转正需为 jp 实现区域接口。"
+      }
+    ],
+    "ae": [
+      {
+        "device_category": "phone", "locale": "en-AE", "currency": "AED",
+        "entry": {"url": "https://www.mi.com/ae/service/materialprice", "steps": [], "expect_url": "https://www.mi.com/ae/service/materialprice"},
+        "query": {"mode": "xiaomi_api", "categories": ["小米手机", "Redmi手机", "智能穿戴及耳机", "电脑办公"],
+                  "api": {"service_api": "https://www.mi.com/ae", "fetch_mode": "http", "concurrency": 8,
+                          "class_tree": "/repair_price/shop_class_info?keyword=&callback=cb",
+                          "class_price": "/repair_price/shop_band_wx_price?class_id={class_id}&callback=cb",
+                          "note": "小米备件价接口(api2.service.order.mi.com)仅中国可用；非 cn 国家无对应接口，service_api 指向 regional mi 域名（无 /repair_price 路径）→ 取价失败→failed 记录，避免把 cn 数据误写成本国。"},
+                  "series_filter": {"电脑办公": ["平板", "Pad"]}},
+        "extract": {"cols": {"part": 0, "material_price": 1, "labor_price": 2}},
+        "evidence": {"captured_url": "https://www.mi.com/ae/service/materialprice", "captured_at": "2026-09-22"},
+        "status": "unverified", "reviewed": true, "updated_at": "2026-09-22",
+        "notes": "【2026-09-22 扩配】小米备件价接口仅中国(api2.service.order.mi.com)可用，ae 无对应接口。保留条目以便覆盖矩阵有记录；运行时以 failed 记录标记（非故障，无数据污染）。如需转正需为 ae 实现区域接口。"
+      }
+    ],
+    "mx": [
+      {
+        "device_category": "phone", "locale": "es-MX", "currency": "MXN",
+        "entry": {"url": "https://www.mi.com/mx/service/materialprice", "steps": [], "expect_url": "https://www.mi.com/mx/service/materialprice"},
+        "query": {"mode": "xiaomi_api", "categories": ["小米手机", "Redmi手机", "智能穿戴及耳机", "电脑办公"],
+                  "api": {"service_api": "https://www.mi.com/mx", "fetch_mode": "http", "concurrency": 8,
+                          "class_tree": "/repair_price/shop_class_info?keyword=&callback=cb",
+                          "class_price": "/repair_price/shop_band_wx_price?class_id={class_id}&callback=cb",
+                          "note": "小米备件价接口(api2.service.order.mi.com)仅中国可用；非 cn 国家无对应接口，service_api 指向 regional mi 域名（无 /repair_price 路径）→ 取价失败→failed 记录，避免把 cn 数据误写成本国。"},
+                  "series_filter": {"电脑办公": ["平板", "Pad"]}},
+        "extract": {"cols": {"part": 0, "material_price": 1, "labor_price": 2}},
+        "evidence": {"captured_url": "https://www.mi.com/mx/service/materialprice", "captured_at": "2026-09-22"},
+        "status": "unverified", "reviewed": true, "updated_at": "2026-09-22",
+        "notes": "【2026-09-22 扩配】小米备件价接口仅中国(api2.service.order.mi.com)可用，mx 无对应接口。保留条目以便覆盖矩阵有记录；运行时以 failed 记录标记（非故障，无数据污染）。如需转正需为 mx 实现区域接口。"
+      }
     ]
   }
 }

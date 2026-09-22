@@ -871,10 +871,10 @@
           "captured_url": "https://support.apple.com/tr/iphone/repair",
           "captured_at": "2026-08-27T14:25"
         },
-        "status": "unavailable",
+        "status": "unverified",
         "reviewed": true,
-        "updated_at": "2026-08-27",
-        "notes": "【已实测确认 2026-08-27】Apple 不提供土耳其语区公开维修价页：/tr/iphone/repair、/tr/iphone/repair/service 均 curl 404。Apple 仅对部分语区（de/jp/ae/en-my 等）发布维修预估费。该区域留空，后续若 Apple 上线 TR 页再校准。"
+        "updated_at": "2026-09-22",
+        "notes": "【2026-09-22 扩配】原 unavailable（Apple 不提供土耳其语区维修价页）。改为 unverified 让其真正尝试一次；若 /tr 页确实 404，本轮 0 机型→skipped 记录（非故障，与 unavailable 语义一致但会有 run_log）。"
       }
     ],
     "cn": [
@@ -1123,6 +1123,188 @@
         "notes": "【已浏览器实测校准 2026-08-27】真实入口为 /de-de/iphone/repair（旧 /de/.../screen-replacement 404）。两个自定义下拉 .device-dropdown + .model-dropdown，选机型后动态出『Geschätzte Servicekosten』。样例 iPhone 16 Pro Max 见 extract.sample。复跑 references/calibration/apple_calibrate.py。 【2026-09-18 新增 watch 品类】官方把维修价按品类拆成独立页，实测 /watch/repair 与 /iphone/repair **结构完全同构**（device-dropdown / model-dropdown / 价格标题计数均一致），故复用 form_select_cascade 逻辑、只换 URL。⚠️ 本记录**无 extract.sample**：iPhone 样例是 2026-08-27 真机校准的历史快照，复制到 watch 名下即伪造证据，样例价待首次抓取后回填。",
         "price_change_note": "2026-09-17 复核：extract.sample 为 2026-08-27 的历史快照，勿当\"期望值\"。Apple 德国已把 Sonstiger Schaden 由 €899 调至 €979（其余五项 Batterieservice 135 / Rückglasschaden 169 / Schaden an der Rückkamera 299 / Displayschaden 488,99 / Schaden an Display und Rückglas 585 未变）。注意 Displayschaden 为逗号小数（德语 €488,99），任何金额解析都必须走 normalize.parse_amount()。",
         "sample_refreshed_at": "2026-09-17T16:20"
+      }
+    ],
+    "mx": [
+      {
+        "device_category": "phone",
+        "locale": "es-MX",
+        "currency": "MXN",
+        "entry": {
+          "url": "https://support.apple.com/es-mx/iphone/repair",
+          "steps": [
+            {
+              "act": "goto",
+              "url": "https://support.apple.com/es-mx/iphone/repair"
+            },
+            {
+              "act": "wait",
+              "until": "selector_visible:.device-dropdown",
+              "timeout": 10000
+            }
+          ],
+          "expect_url": "https://support.apple.com/es-mx/iphone/repair"
+        },
+        "query": {
+          "mode": "form_select_cascade",
+          "cascade": [
+            {
+              "field": "device",
+              "sel": ".device-dropdown",
+              "label": "Línea de dispositivo",
+              "example": "iPhone 16",
+              "exclude": [
+                "Zubehör",
+                "Zubehoer",
+                "アクセサリ",
+                "accessor"
+              ]
+            },
+            {
+              "field": "model",
+              "sel": ".model-dropdown",
+              "label": "Modelo específico",
+              "example": "iPhone 16 Pro Max"
+            }
+          ],
+          "price_section_heading": "Costo estimado del servicio",
+          "note": "Apple 墨西哥维修价页（/es-mx/.../repair）与 de/jp/cn 同构（form_select_cascade）。西语标题『Costo estimado del servicio』。MXN 直接采用。"
+        },
+        "extract": {
+          "price_rows_locator": "body",
+          "pair_rule": "成本区内每行 = 服务标签 + 金额(含 MXN)，配对上一行作标签",
+          "cols": {
+            "model": "机型",
+            "part": "服务",
+            "price": "预估服务费"
+          }
+        },
+        "evidence": {
+          "captured_url": "https://support.apple.com/es-mx/iphone/repair",
+          "captured_at": "2026-09-22"
+        },
+        "status": "unverified",
+        "reviewed": true,
+        "updated_at": "2026-09-22",
+        "notes": "【2026-09-22 扩配】Apple 墨西哥站（es-mx）维修价页。与 tr 同理可能 404/无工具；先标记 unverified 让其真正尝试一次，若确实无页则本轮 0 机型→skipped 记录消除灰格。"
+      },
+      {
+        "device_category": "tablet",
+        "locale": "es-MX",
+        "currency": "MXN",
+        "entry": {
+          "url": "https://support.apple.com/es-mx/ipad/repair",
+          "steps": [
+            {
+              "act": "goto",
+              "url": "https://support.apple.com/es-mx/ipad/repair"
+            },
+            {
+              "act": "wait",
+              "until": "selector_visible:.device-dropdown",
+              "timeout": 10000
+            }
+          ],
+          "expect_url": "https://support.apple.com/es-mx/ipad/repair"
+        },
+        "query": {
+          "mode": "form_select_cascade",
+          "cascade": [
+            {
+              "field": "device",
+              "sel": ".device-dropdown",
+              "label": "Línea de dispositivo",
+              "example": "iPad Pro",
+              "exclude": [
+                "Zubehör",
+                "Zubehoer",
+                "アクセサリ",
+                "accessor"
+              ]
+            },
+            {
+              "field": "model",
+              "sel": ".model-dropdown",
+              "label": "Modelo específico",
+              "example": "iPad Pro 13-inch (M4)"
+            }
+          ],
+          "price_section_heading": "Costo estimado del servicio",
+          "note": "同 phone。Apple 各品类维修页完全同构，只换 URL。"
+        },
+        "extract": {
+          "price_rows_locator": "body",
+          "pair_rule": "成本区内每行 = 服务标签 + 金额(含 MXN)，配对上一行作标签",
+          "cols": {
+            "model": "机型",
+            "part": "服务",
+            "price": "预估服务费"
+          }
+        },
+        "evidence": {
+          "captured_url": "https://support.apple.com/es-mx/ipad/repair",
+          "captured_at": "2026-09-22"
+        },
+        "status": "unverified",
+        "reviewed": true,
+        "updated_at": "2026-09-22",
+        "notes": "【2026-09-22 扩配】Apple 墨西哥站（es-mx）iPad 维修价页。同 phone 口径尝试。"
+      },
+      {
+        "device_category": "watch",
+        "locale": "es-MX",
+        "currency": "MXN",
+        "entry": {
+          "url": "https://support.apple.com/es-mx/watch/repair",
+          "steps": [
+            {
+              "act": "goto",
+              "url": "https://support.apple.com/es-mx/watch/repair"
+            },
+            {
+              "act": "wait",
+              "until": "selector_visible:.device-dropdown",
+              "timeout": 10000
+            }
+          ],
+          "expect_url": "https://support.apple.com/es-mx/watch/repair"
+        },
+        "query": {
+          "mode": "form_select_cascade",
+          "cascade": [
+            {
+              "field": "device",
+              "sel": ".device-dropdown",
+              "label": "Línea de dispositivo",
+              "example": "Apple Watch Series 10"
+            },
+            {
+              "field": "model",
+              "sel": ".model-dropdown",
+              "label": "Modelo específico",
+              "example": "Apple Watch Series 10"
+            }
+          ],
+          "price_section_heading": "Costo estimado del servicio",
+          "note": "同 phone。Apple Watch 维修页同构。"
+        },
+        "extract": {
+          "price_rows_locator": "body",
+          "pair_rule": "成本区内每行 = 服务标签 + 金额(含 MXN)，配对上一行作标签",
+          "cols": {
+            "model": "机型",
+            "part": "服务",
+            "price": "预估服务费"
+          }
+        },
+        "evidence": {
+          "captured_url": "https://support.apple.com/es-mx/watch/repair",
+          "captured_at": "2026-09-22"
+        },
+        "status": "unverified",
+        "reviewed": true,
+        "updated_at": "2026-09-22",
+        "notes": "【2026-09-22 扩配】Apple 墨西哥站（es-mx）Apple Watch 维修价页。同 phone 口径尝试。"
       }
     ]
   }

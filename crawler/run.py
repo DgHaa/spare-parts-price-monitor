@@ -44,16 +44,21 @@ SCOPE = {
     # 机制：product/list 取机型 → skuInfo 取 SKU(skuCode) → query/v2 {productId, skuCode}
     # 取价；skuCode 必填，空则退回全 SKU 默认目录（原误判"品牌级"的根因）。KB 已转 verified。
     # executor 落地于 skill：vivo_cn_support_page / vivo_cn_price_rows（带 skuCode 取价）。
-    "vivo":   {"countries": ["cn", "my", "tr", "ae"], "models": None,
-               "country_names": {"cn": "中国", "my": "马来西亚", "tr": "土耳其", "ae": "阿联酋"}},
-    "xiaomi": {"countries": ["cn"], "models": None,
-               "country_names": {"cn": "中国"}},
-    "apple":  {"countries": ["cn", "de", "jp", "ae", "my"], "models": None,
-               "country_names": {"cn": "中国", "de": "德国", "jp": "日本", "ae": "阿联酋", "my": "马来西亚"}},
-    "samsung":{"countries": ["de", "tr", "my", "jp", "ae", "cn"], "models": None,
-               "country_names": {"de": "德国", "tr": "土耳其", "my": "马来西亚", "jp": "日本", "ae": "阿联酋", "cn": "中国"}},
-    "google": {"countries": ["de", "jp", "ae", "my", "tr"], "models": None,
-               "country_names": {"de": "德国", "jp": "日本", "ae": "阿联酋", "my": "马来西亚", "tr": "土耳其"}},
+    "vivo":   {"countries": ["cn", "my", "tr", "ae", "de", "jp", "mx"], "models": None,
+               "country_names": {"cn": "中国", "my": "马来西亚", "tr": "土耳其", "ae": "阿联酋",
+                                 "de": "德国", "jp": "日本", "mx": "墨西哥"}},
+    "xiaomi": {"countries": ["cn", "de", "tr", "my", "jp", "ae", "mx"], "models": None,
+               "country_names": {"cn": "中国", "de": "德国", "tr": "土耳其", "my": "马来西亚",
+                                 "jp": "日本", "ae": "阿联酋", "mx": "墨西哥"}},
+    "apple":  {"countries": ["cn", "de", "jp", "ae", "my", "tr", "mx"], "models": None,
+               "country_names": {"cn": "中国", "de": "德国", "jp": "日本", "ae": "阿联酋", "my": "马来西亚",
+                                 "tr": "土耳其", "mx": "墨西哥"}},
+    "samsung":{"countries": ["de", "tr", "my", "jp", "ae", "cn", "mx"], "models": None,
+               "country_names": {"de": "德国", "tr": "土耳其", "my": "马来西亚", "jp": "日本", "ae": "阿联酋", "cn": "中国",
+                                 "mx": "墨西哥"}},
+    "google": {"countries": ["de", "jp", "ae", "my", "tr", "cn", "mx"], "models": None,
+               "country_names": {"de": "德国", "jp": "日本", "ae": "阿联酋", "my": "马来西亚", "tr": "土耳其",
+                                 "cn": "中国", "mx": "墨西哥"}},
 }
 
 # 各品牌×国家报价是否含税（1=含税/含VAT，0=税前）。本项目覆盖市场均为含税消费电子

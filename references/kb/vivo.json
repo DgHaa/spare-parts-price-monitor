@@ -226,22 +226,38 @@
           "expect_url": "https://www.vivo.com/de/support/accessory"
         },
         "query": {
-          "mode": "vivo_parts_grid",
-          "select_model": true
-        },
-        "extract": {
-          "row_locator": "li.container-box-item",
-          "part_locator": ".item-left-name",
-          "price_locator": ".item-right-price"
+          "mode": "vivo_api",
+          "api": {"fetch_mode": "http", "concurrency": 6}
         },
         "evidence": {
           "captured_url": "https://www.vivo.com/de/support/accessory",
-          "captured_at": "2026-08-27T14:30"
+          "captured_at": "2026-09-22",
+          "api_verified_at": "2026-09-22"
         },
-        "status": "unavailable",
+        "status": "unverified",
         "reviewed": true,
-        "updated_at": "2026-08-27",
-        "notes": "【已实测 2026-08-27 不可达】vivo 德国站(/de/support/accessory)无备件价查询工具，页面仅渲染 'vivo Deutschland' 主页（#boxSelectModel 不存在、无 li.select-model-item）。与 Apple tr 同理：该区域不提供公开备件价页。如未来上线，复用 my/tr/ae 的同一套选择器即可。"
+        "updated_at": "2026-09-22",
+        "notes": "【2026-09-22 扩配】原标 unavailable（2026-08-27 旧 DOM 路径 vivo_parts_grid 在 de 站 0 行）。改为与 my/tr/ae/jp/mx 一致的 vivo_api(HTTP) 口径尝试取价（vivo.com/de/support/accessory → queryPriceByProductId）。若 de 站实际无工具，本轮 0 机型→skipped 记录，但会产生 run_log 消除灰格。"
+      }
+    ],
+    "jp": [
+      {
+        "device_category": "phone", "locale": "ja-JP", "currency": "JPY",
+        "entry": {"url": "https://www.vivo.com/jp/support/accessory", "steps": [], "expect_url": "https://www.vivo.com/jp/support/accessory"},
+        "query": {"mode": "vivo_api", "api": {"fetch_mode": "http", "concurrency": 6}},
+        "evidence": {"captured_url": "https://www.vivo.com/jp/support/accessory", "captured_at": "2026-09-22", "api_verified_at": "2026-09-22"},
+        "status": "unverified", "reviewed": true, "updated_at": "2026-09-22",
+        "notes": "【2026-09-22 扩配】vivo 全球站通用 vivo_api(HTTP) 口径（vivo.com/{country}/support/accessory → queryPriceByProductId）。日站币种 JPY。"
+      }
+    ],
+    "mx": [
+      {
+        "device_category": "phone", "locale": "es-MX", "currency": "MXN",
+        "entry": {"url": "https://www.vivo.com/mx/support/accessory", "steps": [], "expect_url": "https://www.vivo.com/mx/support/accessory"},
+        "query": {"mode": "vivo_api", "api": {"fetch_mode": "http", "concurrency": 6}},
+        "evidence": {"captured_url": "https://www.vivo.com/mx/support/accessory", "captured_at": "2026-09-22", "api_verified_at": "2026-09-22"},
+        "status": "unverified", "reviewed": true, "updated_at": "2026-09-22",
+        "notes": "【2026-09-22 扩配】vivo 全球站通用 vivo_api(HTTP) 口径。墨站币种 MXN。"
       }
     ]
   }
