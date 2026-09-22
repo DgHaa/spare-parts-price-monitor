@@ -206,10 +206,11 @@
   }
 
   /* 触发后端重新抓取（POST /api/crawl，token 走请求头） */
-  async function triggerCrawl(brand, country, token) {
+  async function triggerCrawl(brand, country, token, force) {
     const q = new URLSearchParams();
     if (brand) q.set("brand", brand);
     if (country) q.set("country", country);
+    if (force) q.set("force", "1");
     let r;
     try {
       r = await fetch(API + "/api/crawl?" + q.toString(), {
@@ -1196,11 +1197,13 @@
       const brand = $("#crawl-brand").value || "";
       const country = $("#crawl-country").value || "";
       const token = $("#crawl-token").value.trim();
+      const force = $("#crawl-force").checked;
       if (!token) { toast("请先输入抓取 token"); $("#crawl-token").focus(); return; }
       crawlBtn.disabled = true;
       try {
-        const res = await triggerCrawl(brand, country, token);
+        const res = await triggerCrawl(brand, country, token, force);
         let msg = "已派发抓取任务：" + res.job_id + "（" + res.brand + "/" + res.country + "）";
+        if (force) msg += "；强制重抓（忽略本季断点）";
         if (res.kb_sync) {
           if (res.kb_sync.conflicts && res.kb_sync.conflicts.length)
             msg += "；⚠️ KB 冲突未覆盖 " + res.kb_sync.conflicts.length + " 个（skill 较新）";

@@ -10,6 +10,7 @@
     .mini { height:30px; padding:0 8px; border:1px solid #ccc; border-radius:6px; background:#fff; font-size:13px; }
     .mini:focus { outline:none; border-color:#ff9800; }
     #crawl-token { width:96px; }
+    .mini-chk { display:inline-flex; gap:3px; align-items:center; font-size:12px; color:var(--muted); cursor:pointer; user-select:none; }
     .btn.warn { background:#fff3e0; border-color:#ffb74d; }
     .btn.warn:hover { background:#ffe0b2; }
     .btn[disabled] { opacity:.5; cursor:not-allowed; }
@@ -52,6 +53,7 @@
             <select id="crawl-brand" class="mini" title="品牌（可空=全部）"></select>
             <select id="crawl-country" class="mini" title="国家（可空=全部）"></select>
             <input id="crawl-token" class="mini" type="password" placeholder="抓取 token" autocomplete="off" />
+            <label class="mini-chk" title="勾选后忽略本季断点续跑，对全部机型重新取价；不勾选则增量 resume（已抓季度不再重复取价）"><input type="checkbox" id="crawl-force" /> 强制</label>
             <button id="btn-crawl" class="btn warn" title="触发后端重新抓取（抓取前自动把项目 KB 同步到运行时，需 token）">🔄 重新抓取</button>
           </span>
         </div>
