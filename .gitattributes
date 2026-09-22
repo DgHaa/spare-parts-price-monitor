@@ -1,0 +1,7 @@
+# 运行时镜像文件必须与 skill 侧保持**逐字节一致**（tools/sync_kb.py 与
+# tools/sync_skill_deps.py 都用 sha256 判定漂移）。本机 core.autocrlf=true，
+# 若不加约束，checkout 时 LF 会被转成 CRLF，导致 sha 对比永远报假漂移。
+# 故对这些镜像一律固定 LF。
+vendor/*.py            text eol=lf
+references/kb/*.json   text eol=lf
+references/calibration/* text eol=lf
