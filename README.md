@@ -153,17 +153,33 @@ python issue_queue.py resolve <id> "<诊断>" "<修改>"     :: 标记已修复�
 | 目录 | 内容 | 来源 |
 | --- | --- | --- |
 | `references/kb/` | 各品牌抓取配方 KB（apple/google/oppo/samsung/vivo/xiaomi） | skill `references/kb/*.json` |
-| `references/calibration/` | 标定数据与标定脚本 | skill `references/calibration/` |
+| `references/calibration/` | 标定数据与标定脚本（`_paths.py` 推导全部路径，可整体搬迁） | 仓库为家，镜像到 skill |
 | `vendor/normalize.py` | 金额解析唯一实现（各国 `.`/`,` 含义相反，勿另写实现） | skill `scripts/normalize.py` |
+| `vendor/executor.py` | 浏览器抓取执行器（1617 行，`query.mode` 各分支） | 仓库为家，镜像到 skill |
 
 运行期代码已改为**仓库副本优先、skill 目录回退**，因此：
 - 装了 skill：两边一致，行为不变；
 - 没装 skill：仓库副本独立工作。
 
-skill 侧若有更新，执行 `python tools/sync_skill_deps.py` 回灌（`--check` 只查漂移不写盘）。
+### ⚠️ 谁是真源：三类文件方向**各不相同**
+`crawler/core.py` 把 `vendor/` 插在 `sys.path` 最前，而 `executor.load_record` 的 `KB_DIR`
+指向 skill 包内——所以「改了要生效」的落点并不统一：
 
-唯一仍需 skill 目录的是 `executor.py`（浏览器抓取执行器，1442 行，随 skill 迭代），
-由 `crawler/core.py` 注入 `sys.path`；缺失时抓取步骤会报 `ModuleNotFoundError: executor`。
+| 想改的东西 | 改哪里（真源） | 生效方式 |
+| --- | --- | --- |
+| 抓取配方 KB | 仓库 `references/kb/*.json` | `python tools/sync_kb.py`（仓库 → skill） |
+| 抓取引擎 | 仓库 `vendor/executor.py` | **直接生效**（vendor 优先），跑 `--apply` 同步镜像 |
+| 金额解析 / 标定脚本 | 仓库 `vendor/normalize.py`、`references/calibration/` | 直接生效；跑 `--apply` 同步镜像 |
+
+> 改 skill 里的 `scripts/executor.py` **不会生效、也不会报错**——这是本仓最容易踩的坑。
+
+镜像一致性检查与同步（默认只读，且**拒绝覆盖比源更新的文件**，识别改错位置的情况）：
+
+```bash
+python tools/sync_skill_deps.py           # 只读：报告漂移与方向（有漂移 exit 1）
+python tools/sync_skill_deps.py --apply   # 部署 仓库 → skill
+python tools/sync_skill_deps.py --pull    # 拉取 skill → 仓库（仅当确知 skill 侧是新版）
+```
 
 ### 路径解析（无机器相关硬编码）
 标定脚本不再写死任何绝对路径，全部由 `references/calibration/_paths.py` 推导：

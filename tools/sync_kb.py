@@ -18,13 +18,21 @@
   本工具把「项目 -> skill」的部署固化下来，并提供 --check 漂移检测，
   在跑 crawler.run 之前先确认 KB 已部署，杜绝静默跳过。
 
-== 与 tools/sync_skill_deps.py 的关系 ==
+== 与 tools/sync_skill_deps.py 的分工 ==
 
-  sync_skill_deps.py 的方向是 skill -> 项目（把 skill 依赖 vendoring 进仓库，
-  让仓库自包含），属一次性引导/拉取。它不会把你对项目 KB 的编辑推回 skill。
-  日常「改了项目 KB 要让抓取生效」请用本工具（项目 -> skill）。
-  注意：不要在本工具部署后随手跑 sync_skill_deps.py，否则可能把项目编辑
-  覆盖回 skill 的旧副本。
+  两者管的是**不同文件**，方向也**相反**，请勿混用（2026-09-22 起明确划分）：
+
+    本工具          ：references/kb/*.json          仓库 -> skill（KB 是 skill 生效）
+    sync_skill_deps ：vendor/executor.py            仓库 -> skill（executor 是仓库生效）
+                      vendor/normalize.py           仓库 -> skill
+                      references/calibration/*      仓库 -> skill
+
+  即：**KB 的真源是仓库、但要部署到 skill 才生效**；executor/normalize/标定脚本的真源
+  也是仓库、且**仓库副本直接生效**（core.py 把 vendor/ 插在 sys.path 最前）。
+  两者的共同点：都请在**仓库**改，改完再同步镜像。
+
+  sync_skill_deps.py 默认只读，且会**拒绝覆盖比源更新的文件**——若它报 exit 2，
+  通常说明有人改在了不生效的那一侧（如改了 skill 的 scripts/executor.py）。
 
 用法：
   python tools/sync_kb.py --check   # 只检测 drift，不写盘（推荐跑 crawler.run 前先跑）
