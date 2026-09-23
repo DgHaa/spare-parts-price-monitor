@@ -1099,8 +1099,11 @@ async def crawl_brand_country(browser, brand, country, country_name, models_seed
     if rec.get("status") in ("blocked", "unavailable"):
         st = rec.get("status")
         print(f"[skip] {brand}/{country} 状态={st}（需真机/代理或官网无工具）", flush=True)
+        # 2026-09-23 状态语义拆分：本类是**人工研判过的环境结论**（官网无备件价工具 /
+        # 需真机代理），与「断点续跑：本季已抓」是两回事，原先都记 skipped，事后无法
+        # 区分「正常续跑」与「该区域根本没数据」。现分别记为 unavailable / resumed。
         _log_run(brand, country, quarter, started, datetime.now().isoformat(timespec="seconds"),
-                "skipped", 0, st)
+                "unavailable", 0, st)
         logged = True
         # 2026-09-22：环境性限制不再建工单。KB 标 blocked/unavailable 是**人工研判过的环境结论**
         # （本机无出口代理 / 官网无公开备件价工具），不是抓取代码的缺陷——每 6h 触发的自愈 Agent
@@ -1110,7 +1113,7 @@ async def crawl_brand_country(browser, brand, country, country_name, models_seed
         if _ever_succeeded(brand, country):
             add_issue(brand, country,
                       f"KB 状态={st}，但该区域曾有成功记录 → 疑似回归（曾可用→退化），需排查")
-        return ("skipped", 0, st)
+        return ("unavailable", 0, st)
     # samsung_api：服务端 HTTP 直采（DE=seg.apix.de REST / MY=Azure 估价 API），无需浏览器/Playwright
     if rec.get("query", {}).get("mode") == "samsung_api":
         # samsung_api 是**同步**实现（urllib + time.sleep），必须丢线程池：直接在协程里
@@ -1228,7 +1231,8 @@ async def crawl_brand_country(browser, brand, country, country_name, models_seed
                     # 全部机型本季已抓 → 断点续跑的**正常跳过**，绝不能当失败写待修队列
                     # （改造前 discover 会返回 10 台再被逐台跳过，故不会走到这里；
                     #  加了前置过滤后 discover 返回空，必须在调用方区分这两种"空"）。
-                    status = "skipped"
+                    # 2026-09-23：独立为 resumed，与"官方无价可抓"（unavailable）区分开。
+                    status = "resumed"
                     reason = (f"断点续跑：本季 {st['skipped']} 台机型均已抓取，"
                               f"本轮无新增价行")
                 elif st.get("errored"):
@@ -1241,7 +1245,9 @@ async def crawl_brand_country(browser, brand, country, country_name, models_seed
                     # partPriceList 为空；小米为 code=14『该产品暂无相关数据』）。
                     # 这是"没得抓"，不是"抓坏了"—— 若判为 failed 并写待修队列，
                     # 则每次续跑都会误报一条（实测 oppo/cn 首次踩中，见 §16.4）。
-                    status = "skipped"
+                    # 2026-09-23：归入 unavailable（官方无价可抓），不再与"未收录"混记 skipped；
+                    # 与 KB 级 unavailable 的差别体现在 reason 文案上（机型级 vs 区域级）。
+                    status = "unavailable"
                     reason = (f"本轮尝试 {st.get('attempted', 0)} 台机型，"
                               f"官方均未公布备件价（接口正常返回但无价表）")
             for m, rows, detail_url in discovered:
@@ -1263,13 +1269,19 @@ async def crawl_brand_country(browser, brand, country, country_name, models_seed
                     print(f"  [discover] {brand}/{country} 自动发现 {len(discovered)} 个机型", flush=True)
                     models = discovered
                 else:
-                    print(f"  [warn] {brand}/{country} 自动发现 0 机型，跳过（选择器可能需校准）", flush=True)
+                    _reason = "自动发现 0 机型（选择器可能需校准 / 页面改版 / 反爬）"
+                    print(f"  [warn] {brand}/{country} {_reason}", flush=True)
+                    # 2026-09-23 状态语义拆分：本类原先记 status=skipped、anomaly_flag=0，
+                    # 但它**会往待修队列写工单**，且正是"静默失联"的最高危信号
+                    # （vivo/tr 曾因浏览器并发把 goto 顶过 25s 上限 → 自动发现 0 机型 →
+                    #   本季数据整块缺失，而 run_log 看起来只是"跳过"）。
+                    # 按 failed + anomaly 如实上报，不再伪装成"正常跳过"。
                     _log_run(brand, country, quarter, started, datetime.now().isoformat(timespec="seconds"),
-                            "skipped", 0, "自动发现 0 机型（选择器可能需校准）")
+                            "failed", 0, _reason, 1, _reason)
                     logged = True
-                    add_issue(brand, country, "自动发现 0 机型（选择器可能需校准 / 页面改版 / 反爬）")
+                    add_issue(brand, country, _reason)
                     await page.close()
-                    return ("skipped", 0, "自动发现 0 机型（选择器可能需校准）")
+                    return ("failed", 0, _reason)
             for m in models:
                 if not force and model_already_captured(bid, country, m, quarter):
                     continue
@@ -1287,8 +1299,10 @@ async def crawl_brand_country(browser, brand, country, country_name, models_seed
         # 异常启发式（诚实上报）：断点续跑全跳过不算异常；其余失败如实标记。
         if status == "success":
             if attempted == 0:
-                # 本季机型此前已全部抓取，本轮无新增 —— 不是失败，但也不能误标"成功产出"
-                status = "skipped"
+                # 本季机型此前已全部抓取，本轮无新增 —— 不是失败，但也不能误标"成功产出"。
+                # 2026-09-23 拆为独立状态 resumed：与 unavailable（官网不提供）语义不同，
+                # 混记 skipped 会让覆盖度审计分不清"正常续跑"与"该区域根本没数据"。
+                status = "resumed"
                 reason = "断点续跑：本季机型均已抓取，本轮无新增价行"
             elif rows_total == 0:
                 status = "failed"
@@ -1412,14 +1426,22 @@ async def crawl_brand_country_all(browser, brand, country, country_name, models_
         statuses.append(st or "success")
         if reason:
             reasons.append(f"{cat}: {reason}")
-    if all(s == "skipped" for s in statuses):
-        status = "skipped"
-    elif "failed" in statuses:
+    # 汇总优先级（2026-09-23 随状态语义拆分更新）：
+    #   failed > partial > success > resumed > unavailable > skipped
+    # 即"有坏消息先报坏消息；有好消息就报好消息；都没有才报中性的续跑/不可用"。
+    # 混记 resumed+unavailable 时取 resumed（说明该区域确有数据在跑，信息量更大）。
+    if "failed" in statuses:
         status = "failed"
     elif "partial" in statuses:
         status = "partial"
-    else:
+    elif "success" in statuses:
         status = "success"
+    elif "resumed" in statuses:
+        status = "resumed"
+    elif all(s == "unavailable" for s in statuses):
+        status = "unavailable"
+    else:
+        status = "skipped"
     reason = "；".join(reasons)
     anomaly = 1 if status in ("failed", "partial") else 0
     log_run(brand, country, quarter, started, datetime.now().isoformat(timespec="seconds"),

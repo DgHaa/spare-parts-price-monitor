@@ -801,13 +801,14 @@ def crawl_and_write(brand, country, country_name, rec, force=False):
             anomaly = 1
             reason = "服务端未解析到任何机型（页面结构变更 / 区域不可达）"
         elif attempted == 0:
-            status = "skipped"
+            # 2026-09-23 状态语义拆分：断点续跑独立为 resumed（原与"官网不提供"混记 skipped）
+            status = "resumed"
             reason = f"断点续跑：本季 {total} 台机型均已抓取，本轮无新增价行"
         elif rows_total == 0:
             status = "failed"
             anomaly = 1
             reason = f"尝试 {attempted} 台机型但 0 条价（页面结构变更或价格列解析失败）"
-        if status == "skipped":
+        if status == "resumed":
             print(f"  [resume] {brand}/{country} 本季已抓 {total} 台，不再重复取价", flush=True)
     except Exception as e:  # noqa: BLE001
         status = "failed"

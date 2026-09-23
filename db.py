@@ -132,7 +132,10 @@ CREATE TABLE IF NOT EXISTS run_logs (
   quarter TEXT,
   started_at TEXT,
   finished_at TEXT,
-  status TEXT,            -- success / failed / partial / skipped
+  status TEXT,            -- success / partial / failed     本轮抓取结果
+                          -- resumed                     断点续跑：本季机型均已抓，本轮无新增（正常）
+                          -- unavailable                 KB 人工研判「官网不提供备件价/需真机代理」
+                          -- skipped                     未收录（无 KB 记录）
   rows_written INTEGER,
   error_text TEXT,
   anomaly_flag INTEGER DEFAULT 0,

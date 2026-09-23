@@ -253,11 +253,12 @@ def api_overview():
     # （status='skipped'，rows_written=0）会被涂成灰色，看起来像"该品牌/国家没有数据"，
     # 而实际上可能已有上万条价行（如 xiaomi/cn 21264 条、oppo/ae 2894 条）。
     # 现改为按"实际覆盖"派生 cov_status（与运行状态解耦）：
-    #   ok     本季有价行（数据新鲜）
-    #   stale  有余量历史价行但本季为 0（需补抓本季）
-    #   failed 无任何价行，且最近一次运行 failed 或存在未解决工单
-    #   empty  无任何价行，从未成功抓到
-    # 同时保留 status（本轮运行状态）供排查，两者语义不同，前端 tooltip 分别展示。
+    #   ok          本季有价行（数据新鲜）
+    #   stale       有余量历史价行但本季为 0（需补抓本季）
+    #   failed      无任何价行，且最近一次运行 failed 或存在未解决工单
+    #   unavailable 无任何价行，但 KB 已人工研判「官网不提供备件价」——不是我方缺口
+    #   empty       无任何价行，从未成功抓到
+    # 同时保留 status（本轮运行状态，见下方 taxonomy）供排查，两者语义不同，前端分别展示。
     cov = rows_to_dict(c.execute(
         """SELECT r.brand, r.country, r.quarter, r.status, r.rows_written,
                   r.anomaly_flag, r.anomaly_reason, r.finished_at,
@@ -287,10 +288,15 @@ def api_overview():
             r["cov_status"] = "stale"
         elif r["status"] == "failed" or r["open_issues"]:
             r["cov_status"] = "failed"
+        elif r["status"] == "unavailable":
+            # 2026-09-23：KB 人工研判「官网不提供备件价 / 需真机代理」的区域单列。
+            # 与「从未抓到数据」语义不同，混为一谈会让覆盖度指标失真（像是我们漏抓了），
+            # 而实际是对方根本不公布——这类必须如实呈现"官方不提供"，不能算我方缺口。
+            r["cov_status"] = "unavailable"
         else:
             r["cov_status"] = "empty"
     kpis["coverage"] = {s: sum(1 for r in cov if r["cov_status"] == s)
-                        for s in ("ok", "stale", "failed", "empty")}
+                        for s in ("ok", "stale", "failed", "unavailable", "empty")}
     kpis["coverage_latest_quarter"] = latest
     c.close()
     return {"kpis": kpis, "coverage": cov, "quarters": quarters}

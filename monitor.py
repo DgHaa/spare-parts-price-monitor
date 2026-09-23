@@ -53,7 +53,18 @@ def scan(write_queue=True, report_only=False):
     queued = 0
     for r in runs:
         brand, country, status = r["brand"], r["country"], r["status"]
-        flag = "OK" if status == "success" else ("SKIP" if status == "skipped" else "FAIL")
+        # 2026-09-23 状态语义拆分：原先 resumed（本季已抓）与 unavailable（官网不提供）、
+        # skipped（未收录）都记同一状态，巡检输出无法区分。现分列四种中性/失败标记。
+        if status == "success":
+            flag = "OK"
+        elif status == "resumed":
+            flag = "RESUME"
+        elif status == "unavailable":
+            flag = "N/A"
+        elif status == "skipped":
+            flag = "SKIP"
+        else:  # failed / partial
+            flag = "FAIL"
         print(f"  [{flag}] {brand}/{country} 状态={status} 行数={r['rows_written']} "
               f"{('异常:' + r['anomaly_reason']) if r['anomaly_flag'] else ''}")
         if status in ("failed", "partial") and r["anomaly_flag"] and write_queue and not report_only:

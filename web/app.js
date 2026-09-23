@@ -105,11 +105,18 @@
     const x = (state.brands || []).find(r => r.name === b);
     return (x && x.source_unavailable) || [];
   }
+  // 本轮运行状态（run_logs.status）。2026-09-23 语义拆分：
+  //   resumed     断点续跑：本季机型均已抓，本轮无新增 —— 正常，不是异常
+  //   unavailable KB 人工研判「官网不提供备件价 / 需真机代理」—— 对方不公布，非我方缺口
+  //   skipped     未收录（无 KB 记录）
+  // 三者原先都记 skipped，界面上无法区分，会把"官方不提供"显示成"跳过"。
   function statusBadge(st) {
     if (st === "success") return '<span class="badge green">正常</span>';
     if (st === "failed") return '<span class="badge red">抓取失败</span>';
     if (st === "partial") return '<span class="badge amber">部分失败</span>';
-    if (st === "skipped") return '<span class="badge gray">跳过</span>';
+    if (st === "resumed") return '<span class="badge gray">续跑（本季已抓）</span>';
+    if (st === "unavailable") return '<span class="badge blue">官网不提供</span>';
+    if (st === "skipped") return '<span class="badge gray">未收录</span>';
     return '<span class="badge gray">' + esc(st || "?") + "</span>";
   }
   // 迷你折线（内联 SVG，无依赖）
@@ -264,7 +271,9 @@
       // 覆盖口径（品牌×国家，看"有没有数据"）替代原先的"最新运行状态"口径：
       // 断点续跑会让最新运行恒为 skipped，据此统计会把正常覆盖误报成"抓取异常"。
       { l: "覆盖就绪", v: kcov.ok || 0, s: "品牌×国家·本季有数据", dot: "var(--green)" },
-      { l: "覆盖待补", v: (kcov.stale || 0) + (kcov.failed || 0) + (kcov.empty || 0), s: "无数据/非本季", dot: "var(--amber)" },
+      { l: "覆盖待补", v: (kcov.stale || 0) + (kcov.failed || 0) + (kcov.empty || 0), s: "无数据/非本季（不含官方不提供）", dot: "var(--amber)" },
+      // 单列出来：官方不提供 ≠ 我方漏抓。混进"待补"会让覆盖度指标失真、也误导排查方向。
+      { l: "官方不提供", v: kcov.unavailable || 0, s: "品牌×国家·对方未公布价格", dot: "var(--primary)" },
       { l: "待修工单", v: k.open_issues, s: "自愈队列", dot: "var(--amber)" },
     ];
     let html = '<div class="grid kpis">';
@@ -296,14 +305,25 @@
     // 格子底色 = 实际覆盖情况（cov_status），不是"本轮运行状态"。
     // 断点续跑会让绝大多数格子 status='skipped'，若据此涂灰，会把已有上万条
     // 价行的格子显示成"无数据"——这正是"只有一块绿色"的原因。
-    const covCls = { ok: "cov-ok", stale: "cov-stale", failed: "cov-fail", empty: "cov-empty" };
-    const covLabel = { ok: "已覆盖本季", stale: "仅历史季度有数据，本季待补抓", failed: "抓取失败/受阻，无数据", empty: "从未抓到数据" };
-    const runLabel = { success: "成功", skipped: "跳过（断点续跑/无新增）", failed: "失败", partial: "部分成功" };
+    const covCls = { ok: "cov-ok", stale: "cov-stale", failed: "cov-fail", unavailable: "cov-na", empty: "cov-empty" };
+    const covLabel = {
+      ok: "已覆盖本季", stale: "仅历史季度有数据，本季待补抓",
+      failed: "抓取失败/受阻，无数据",
+      unavailable: "官方不提供备件价（KB 已人工研判，非我方缺口）",
+      empty: "从未抓到数据"
+    };
+    const runLabel = {
+      success: "成功", partial: "部分成功", failed: "失败",
+      resumed: "续跑（本季已抓，本轮无新增）",
+      unavailable: "官网不提供备件价（需真机/代理或无公开工具）",
+      skipped: "未收录（无 KB 记录）"
+    };
     html += '<div class="panel"><div class="section-title">🌐 抓取覆盖矩阵</div>';
     html += '<div class="legend cov-legend">' +
       '<span><i class="cov-ok"></i>已覆盖本季</span>' +
       '<span><i class="cov-stale"></i>仅历史季度</span>' +
       '<span><i class="cov-fail"></i>失败/无数据</span>' +
+      '<span><i class="cov-na"></i>官方不提供</span>' +
       '<span><i class="cov-empty"></i>从未抓取</span>' +
       '<span class="muted">数字为该品牌/国家累计价行数；底色看「实际覆盖」，悬停可见本轮运行状态</span></div>';
     html += '<div class="scroll"><table><thead><tr><th>品牌</th>';

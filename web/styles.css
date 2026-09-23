@@ -132,6 +132,9 @@ select,input{height:36px;border:1px solid var(--line);border-radius:9px;padding:
 .cov-ok{background:var(--green-soft);color:var(--green)}
 .cov-stale{background:var(--amber-soft);color:var(--amber)}
 .cov-fail{background:var(--red-soft);color:var(--red)}
+/* 官方不提供备件价（KB 已人工研判）——用信息蓝而非"灰=没抓到"，
+   避免把"对方不公布"误读成"我方漏抓" */
+.cov-na{background:var(--primary-soft);color:var(--primary)}
 .cov-empty{background:var(--bg-soft);color:var(--muted)}
 /* 兼容旧类名 */
 .cov-skip{background:var(--bg-soft);color:var(--muted)}
