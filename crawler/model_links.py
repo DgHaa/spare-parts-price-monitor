@@ -24,12 +24,17 @@ import asyncio
 import json
 import re
 import sqlite3
+import sys
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+import db  # noqa: E402  取证链接类型的单一词汇表来源
+
 DB = ROOT / "spare_parts.db"
 OUT = ROOT / "output"
 
@@ -40,10 +45,17 @@ APPLE_LOCALE = {"de": "de-de", "jp": "ja-jp", "ae": "en-ae", "my": "en-my",
 MI_CLASS_LIST = "https://api2.service.order.mi.com/repair_price/shop_class_info?keyword=&callback=CALLBACK"
 MI_PRICE = "https://api2.service.order.mi.com/repair_price/shop_band_wx_price?class_id={cid}&callback=cb"
 
-KIND_MODEL_API = "model_api"
-KIND_CAT_API = "category_api_locator"
-KIND_TEXT_FRAG = "model_text_fragment"
-KIND_BRAND = "brand_entry"
+# 取证链接类型常量：**绑定 db 的单一来源**，不再在此另写一份字面量。
+# 本模块走直接 SQL 写入（绕过 db.upsert_model 的写入口断言），若在此另定义一份，
+# 一旦与 db 漂移就会静默写出非法 kind —— 绑成一处可让漂移在导入期就失败，
+# 而不是等 tools/verify_quarterly_run.py 事后巡检才发现。
+KIND_MODEL_API = db.MODEL_URL_KIND_API
+KIND_CAT_API = db.MODEL_URL_KIND_CATEGORY_API
+KIND_TEXT_FRAG = db.MODEL_URL_KIND_TEXT_FRAGMENT
+KIND_BRAND = db.MODEL_URL_KIND_BRAND_ENTRY
+# 防御：防止 db 侧改名后这里静默变成 None
+assert None not in (KIND_MODEL_API, KIND_CAT_API, KIND_TEXT_FRAG, KIND_BRAND), \
+    "db.MODEL_URL_KIND_* 常量解析失败，检查 db.py 是否改名"
 
 
 def now_iso():
@@ -116,16 +128,21 @@ def write_links(records, dry_run=False):
     n_m = n_s = 0
     ts = now_iso()
     for r in records:
+        # 写边界校验：本模块走直接 SQL，绕过 db.upsert_model 的断言，故在此显式补上。
+        # ⚠️ 两列是**两套**词汇表（source_url_kind 多一个 reference_cn），所以分别按
+        # 各自的合法集校验 —— 不能因为"同一个 r['kind'] 写两处"就假定它们同义。
+        model_kind = db.validate_model_url_kind(r["kind"])
+        snap_kind = db.validate_snapshot_url_kind(r["kind"])
         c.execute("""UPDATE models SET model_url=?, model_url_kind=?, model_url_locator=?,
                                        model_url_verified=?, model_url_checked_at=?, model_page_url=?
                      WHERE id=?""",
-                  (r["model_url"], r["kind"], json.dumps(r["locator"], ensure_ascii=False),
+                  (r["model_url"], model_kind, json.dumps(r["locator"], ensure_ascii=False),
                    1 if r["verified"] else 0, ts, r.get("model_page_url"), r["model_id"]))
         n_m += c.rowcount
         if r["verified"]:
             c.execute("""UPDATE price_snapshots SET source_url=?, source_url_kind=?
                          WHERE part_id IN (SELECT id FROM parts WHERE model_id=?)""",
-                      (r["model_url"], r["kind"], r["model_id"]))
+                      (r["model_url"], snap_kind, r["model_id"]))
             n_s += c.rowcount
         else:
             # 未落实/未通过校验：保留原 source_url，但如实标注为品牌入口级

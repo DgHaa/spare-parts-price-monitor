@@ -37,7 +37,10 @@ from db import (init_db, fetch_rates, this_quarter, upsert_brand, upsert_country
                upsert_model, upsert_part, insert_snapshot, get_rate_meta,
                normalize_base_model, extract_spec, extract_color, classify_tier,
                log_run, add_issue, model_already_captured, guess_category,
-               STATUS_SUCCESS, STATUS_FAILED, STATUS_RESUMED)
+               STATUS_SUCCESS, STATUS_FAILED, STATUS_RESUMED,
+               CATEGORY_PHONE, CATEGORY_TABLET, CATEGORY_WATCH,
+               CATEGORY_EARBUDS, CATEGORY_WEARABLE, CATEGORY_OTHER,
+               DEFAULT_CATEGORY)
 
 # KB 位置：优先仓库内副本 references/kb（已随仓库同步），缺失时回退到 skill 目录
 _REPO_KB = Path(__file__).resolve().parents[1] / "references" / "kb"
@@ -182,7 +185,10 @@ def _map_my_part(symptom_name):
 #   Smartphones(2) / Tablets(3) / Wearables(4) / Notebooks(5)
 # 按 2026-09-18 全品类口径收前三类；Notebooks 与小米"电脑办公只收平板"同理排除
 # （笔记本不是手机备件比价的参照系，纳入只会淹没大盘）。
-_DE_TYPE_CATEGORY = {"smartphones": "phone", "tablets": "tablet", "wearables": "wearable"}
+# 品类词表：绑定 db.CATEGORY_* 单一来源（本模块的抓取结果直接进 models.category，
+# 写错会静默拆散比价矩阵分组；db.upsert_model 的断言会在写入时兜底，但源头也应唯一）。
+_DE_TYPE_CATEGORY = {"smartphones": CATEGORY_PHONE, "tablets": CATEGORY_TABLET,
+                     "wearables": CATEGORY_WEARABLE}
 _DE_TYPES_DEFAULT = ["Smartphones", "Tablets", "Wearables"]
 
 
@@ -200,7 +206,7 @@ def fetch_de(rec):
     for t in types:
         nm = (t.get("name") or "").strip()
         if nm.lower() in want and t.get("guid") is not None:
-            plan.append((t["guid"], _DE_TYPE_CATEGORY.get(nm.lower(), "phone")))
+            plan.append((t["guid"], _DE_TYPE_CATEGORY.get(nm.lower(), DEFAULT_CATEGORY)))
     if not plan:
         raise RuntimeError(f"DE 未找到任何目标设备类型（期望 {want}）")
     for type_guid, type_cat in plan:
@@ -247,7 +253,7 @@ def fetch_de(rec):
                     # 机型名能判品类就用机型名（Watch→watch / Buds→earbuds 比类型更细），
                     # 判成 phone 但类型本身不是手机时以类型兜底
                     cat = guess_category(mname)
-                    if cat == "phone" and type_cat != "phone":
+                    if cat == CATEGORY_PHONE and type_cat != CATEGORY_PHONE:
                         cat = type_cat
                     for r in rows:
                         r["category"] = cat
@@ -539,7 +545,9 @@ _JP_COLS = {
 # 但跨品类比价无意义（"平板屏幕" ≠ "手机屏幕"），故每行都标 category，比价矩阵按品类分组。
 # ⚠️ 不能靠表头区分品类：#1/#3 的列名与手机表几乎完全相同（ディスプレイ交換/バッテリー交換/メイン基板交換）。
 # ⚠️ 也不能写 `\bWatch\b`：Galaxy Watch4 的 h 与 4 都是词字符、中间无单词边界（2026-09-18 实测漏网）。
-_JP_TABLE_CATEGORY = ["phone", "tablet", "earbuds", "watch", "wearable", "wearable"]
+# 日站价表按表格分区标记品类（顺序即表格顺序）；绑定 db.CATEGORY_* 单一来源
+_JP_TABLE_CATEGORY = [CATEGORY_PHONE, CATEGORY_TABLET, CATEGORY_EARBUDS,
+                      CATEGORY_WATCH, CATEGORY_WEARABLE, CATEGORY_WEARABLE]
 
 # 一格挤多个机型名的拆分锚点：日站把同价的不同版本写进同一格，如
 # "Galaxy Tab S6 Lite (Wi-Fi) Galaxy Tab S6 Lite 2024 (Wi-Fi)" → 拆成两台。
@@ -595,7 +603,8 @@ def fetch_jp(rec):
                 if h.replace("\u3000", " ").strip() in _JP_COLS]
         if not cols:
             continue
-        tbl_cat = _JP_TABLE_CATEGORY[ti] if ti < len(_JP_TABLE_CATEGORY) else "other"
+        tbl_cat = (_JP_TABLE_CATEGORY[ti] if ti < len(_JP_TABLE_CATEGORY)
+                   else CATEGORY_OTHER)
         for row in rows[1:]:
             cells = [_clean_cell(c) for c in re.findall(r"<t[dh][\s\S]*?</t[dh]>", row, re.I)]
             if len(cells) < len(header):
@@ -606,7 +615,7 @@ def fetch_jp(rec):
             for model in _split_jp_models(raw):
                 # 机型名优先判品类；判成 phone 但表本身不是手机表时，以表索引兜底
                 cat = guess_category(model)
-                if cat == "phone" and tbl_cat != "phone":
+                if cat == CATEGORY_PHONE and tbl_cat != CATEGORY_PHONE:
                     cat = tbl_cat
                 for idx, part in cols:
                     add(cat, model, part, _tr_price(cells[idx]))

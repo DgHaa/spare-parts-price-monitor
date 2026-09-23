@@ -10,7 +10,9 @@
      （= 节点选错 / 接口改版 / 静默 0 机型的典型特征，日志看起来一切正常）；
   3) 结构卫生：孤儿快照、重复快照、非正价格、跨区同价串味；
   4) 状态词汇表：run_logs.status 实际取值必须 ⊆ db.VALID_STATUSES
-     （应用层枚举的可观测兜底，见 check_status_vocabulary 说明）。
+     （应用层枚举的可观测兜底，见 check_status_vocabulary 说明）；
+  5) 枚举列白名单：models.category / tier / model_url_kind、快照链接粒度、
+     工单状态、配方类型、汇率来源（见 check_enum_vocabularies 说明）。
 
 用法：
   python tools/verify_quarterly_run.py
@@ -298,6 +300,86 @@ def check_status_vocabulary(con, rep):
     return seen
 
 
+def _enum_specs():
+    """待巡检的枚举列：(表, 列, 合法值集合, 写错会静默造成什么后果)。
+
+    说明列刻意写成"后果"而非"定义"——报错时它直接进 message，让人一眼知道为什么要修。
+    """
+    return [
+        ("models", "category", db.VALID_CATEGORIES,
+         "写错会在 COALESCE(...,'phone') 之外凭空多出一个分组，静默拆散比价矩阵"
+         "（跨品类比价无意义），且按 category 过滤时该行不可见"),
+        ("models", "tier", db.VALID_TIERS,
+         "写错会在 api_tiers() 的 SELECT DISTINCT 里多出一个假档位选项"),
+        ("models", "model_url_kind", db.VALID_MODEL_URL_KINDS,
+         "写错会让前端『这条价格是否精确到本机型』的标注失真"),
+        ("price_snapshots", "source_url_kind", db.VALID_SNAPSHOT_URL_KINDS,
+         "同上门；注意它与 models.model_url_kind 是**两套**词汇表（本列多 reference_cn）"),
+        ("maintenance_queue", "status", db.VALID_ISSUE_STATUSES,
+         "写错会让未解决工单计数归零（待修队列看着像全清了，实际是条件失配）"),
+        ("brands", "recipe_mode", db.VALID_RECIPE_MODES,
+         "写错会让 _job_needs_browser 误判该品牌是否需要浏览器，进而影响并发池划分"),
+    ]
+
+
+def check_enum_vocabularies(con, rep):
+    """枚举列白名单巡检（models.category / tier / model_url_kind、快照链接粒度、
+    工单状态、配方类型、汇率来源）。
+
+    与 check_status_vocabulary 同源：写入口断言只挡新数据，这里挡**历史遗留**与
+    **绕过写入口的直接 SQL**。非法值一律判 ERROR，因为它们的后果全都是静默的
+    （详见 _enum_specs 的后果列）。
+
+    NULL 不算非法：这些列的 NULL 都有明确含义（未生成链接 / 未记录来源 / 未指定配方），
+    但会作为 INFO 统计出来，便于发现"以为写了其实没写"。
+    """
+    problems = 0
+    null_notes = []
+    for table, col, valid, why in _enum_specs():
+        try:
+            n = con.execute(
+                f"SELECT COUNT(*) FROM {table} "
+                f"WHERE {col} IS NOT NULL AND {col} NOT IN ({','.join('?' * len(valid))})",
+                tuple(sorted(valid))).fetchone()[0]
+            nulls = con.execute(
+                f"SELECT COUNT(*) FROM {table} WHERE {col} IS NULL").fetchone()[0]
+        except sqlite3.OperationalError as e:
+            problems += 1
+            rep.add(SEV_ERROR, "ENUM_UNREADABLE", f"无法读取 {table}.{col}：{e}")
+            continue
+        if n:
+            problems += 1
+            rep.add(SEV_ERROR, "ENUM_INVALID",
+                    f"{table}.{col} 出现 {n} 行非法值"
+                    f"（合法值 {sorted(valid)}）；{why}")
+        if nulls:
+            null_notes.append(f"{table}.{col}={nulls}")
+
+    # rate_source 是**前缀模式**（static / live:<endpoint>），不能用 NOT IN 判定
+    for table in ("exchange_rates", "price_snapshots"):
+        try:
+            n = con.execute(
+                f"SELECT COUNT(*) FROM {table} WHERE rate_source IS NOT NULL "
+                f"AND rate_source<>? AND rate_source NOT LIKE ?",
+                (db.RATE_SOURCE_STATIC,
+                 db.RATE_SOURCE_LIVE_PREFIX + "%")).fetchone()[0]
+        except sqlite3.OperationalError as e:
+            problems += 1
+            rep.add(SEV_ERROR, "ENUM_UNREADABLE", f"无法读取 {table}.rate_source：{e}")
+            continue
+        if n:
+            problems += 1
+            rep.add(SEV_ERROR, "ENUM_INVALID",
+                    f"{table}.rate_source 出现 {n} 行非法值（应为 "
+                    f"{db.RATE_SOURCE_STATIC!r} 或 {db.RATE_SOURCE_LIVE_PREFIX!r} 前缀）；"
+                    f"写错会让折算可信度标注失真")
+
+    if not problems:
+        rep.add(SEV_INFO, "ENUM_VOCAB",
+                f"枚举列白名单通过（{len(_enum_specs()) + 2} 列）"
+                + (f"；NULL 分布：{'、'.join(null_notes)}" if null_notes else ""))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", default=os.path.join(ROOT, "spare_parts.db"))
@@ -319,6 +401,7 @@ def main():
         check_silent_failure(cov, rep)
         check_crosstalk(con, rep)
         check_status_vocabulary(con, rep)
+        check_enum_vocabularies(con, rep)
         diff = compare_baseline(args.baseline, cov, rep)
     finally:
         con.close()

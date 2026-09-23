@@ -33,6 +33,66 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 import db
 
+# ── 品类兜底表达式（单一来源）────────────────────────────────────────────────
+# 库里 category 为 NULL 时视为默认品类。⚠️ 关键风险：**拼错的 category 不会被
+# COALESCE 兜住** —— 它会作为一个独立值参与 GROUP BY，凭空多出一个品类分组，
+# 静默拆散比价矩阵（跨品类比价无意义），且按品类过滤时那一行直接不可见。
+# 防线是两层：写入侧 db.validate_category() 拦新数据；存量/漏网由
+# tools/verify_quarterly_run.py 的白名单巡检报 ERROR（见 db.VALID_CATEGORIES）。
+# 这里用 db.DEFAULT_CATEGORY 拼装（而不是再写一份 'phone' 字面量），避免两处漂移；
+# 该值是内部硬编码常量、非用户输入，故无注入面。
+CAT_FALLBACK = "COALESCE(m.category, '%s')" % db.DEFAULT_CATEGORY       # 带 m. 别名
+CAT_FALLBACK_BARE = "COALESCE(category, '%s')" % db.DEFAULT_CATEGORY    # 单表查询
+
+# 工单"未解决"状态（单一来源，见 db.VALID_ISSUE_STATUSES）。
+# 若日后改名而这里漏改，这些子查询会静默返回 0 条未解决工单 —— 待修队列看着全清了，
+# 实际是查询条件失配。故与 db.ISSUE_OPEN 绑成一处。
+ISSUE_OPEN_SQL = "q.status='%s'" % db.ISSUE_OPEN        # 带 q. 别名
+ISSUE_OPEN_SQL_BARE = "status='%s'" % db.ISSUE_OPEN     # 单表查询
+
+
+def _invalid_enum_counts(c):
+    """统计各枚举列里的非法值行数 —— 把这些"静默"故障变成可观测指标。
+
+    这些列都没有 DB 级 CHECK，且都是被静默消费的：
+      · models.category 写错 → 在 COALESCE 兜底之外多出一个分组，静默拆散比价矩阵
+      · models.tier 写错     → api_tiers() 的 SELECT DISTINCT 会多出一个下拉选项
+      · source_url_kind 写错 → 前端"是否精确到本机型"的标注说谎
+      · 工单状态写错         → 未解决工单计数归零（看着像全清了）
+    返回 {"<table>.<col>": 非法行数}。全部为 0 才算干净；
+    tools/verify_quarterly_run.py 有对应的 ERROR 级巡检。
+    """
+    def bad(table, col, valid):
+        marks = ",".join("?" * len(valid))
+        return c.execute(
+            f"SELECT COUNT(*) n FROM {table} "
+            f"WHERE {col} IS NOT NULL AND {col} NOT IN ({marks})",
+            tuple(sorted(valid))).fetchone()["n"]
+
+    out = {
+        "models.category": bad("models", "category", db.VALID_CATEGORIES),
+        "models.tier": bad("models", "tier", db.VALID_TIERS),
+        "models.model_url_kind": bad("models", "model_url_kind", db.VALID_MODEL_URL_KINDS),
+        "price_snapshots.source_url_kind": bad(
+            "price_snapshots", "source_url_kind", db.VALID_SNAPSHOT_URL_KINDS),
+        "maintenance_queue.status": bad(
+            "maintenance_queue", "status", db.VALID_ISSUE_STATUSES),
+        "brands.recipe_mode": bad("brands", "recipe_mode", db.VALID_RECIPE_MODES),
+    }
+    # rate_source 是前缀模式（static / live:<endpoint>），不能用 NOT IN 判定
+    for tbl in ("exchange_rates", "price_snapshots"):
+        out[f"{tbl}.rate_source"] = c.execute(
+            f"SELECT COUNT(*) n FROM {tbl} WHERE rate_source IS NOT NULL "
+            f"AND rate_source<>? AND rate_source NOT LIKE ?",
+            (db.RATE_SOURCE_STATIC, db.RATE_SOURCE_LIVE_PREFIX + "%")).fetchone()["n"]
+    total = sum(out.values())
+    if total:
+        print(f"[warn] 枚举列存在非法值 {total} 行："
+              + "、".join(f"{k}={v}" for k, v in out.items() if v)
+              + f"；详见 db.VALID_* 常量与 tools/verify_quarterly_run.py",
+              file=sys.stderr, flush=True)
+    return out
+
 WEB_ROOT = ROOT / "web"
 # 端口：默认 8000；可用环境变量覆盖（PORT=8010 python api/server.py），
 # 或用命令行覆盖（python api/server.py --port 8010）。命令行优先于环境变量。
@@ -140,8 +200,8 @@ def api_matrix(quarter=None, category=None):
     c = conn()
     if not quarter:
         quarter = db.this_quarter()
-    q = """SELECT b.name brand, m.country_code country, m.name model,
-                  COALESCE(m.category,'phone') category,
+    q = f"""SELECT b.name brand, m.country_code country, m.name model,
+                  {CAT_FALLBACK} category,
                   p.name part, ps.price, ps.currency, ps.cny_price
            FROM price_snapshots ps
            JOIN parts p ON p.id=ps.part_id
@@ -150,7 +210,7 @@ def api_matrix(quarter=None, category=None):
            WHERE ps.quarter=?"""
     args = [quarter]
     if category:
-        q += " AND COALESCE(m.category,'phone')=?"; args.append(category)
+        q += f" AND {CAT_FALLBACK}=?"; args.append(category)
     q += " ORDER BY b.name, m.country_code, m.name, p.name"
     out = rows_to_dict(c.execute(q, args))
     c.close()
@@ -187,10 +247,10 @@ def api_quarters():
 
 def api_health():
     c = conn()
-    q = """SELECT r.brand, r.country, r.quarter, r.status, r.rows_written,
+    q = f"""SELECT r.brand, r.country, r.quarter, r.status, r.rows_written,
                   r.anomaly_flag, r.anomaly_reason, r.finished_at,
                   (SELECT COUNT(*) FROM maintenance_queue q
-                   WHERE q.brand=r.brand AND q.country=r.country AND q.status='open') AS open_issues
+                   WHERE q.brand=r.brand AND q.country=r.country AND {ISSUE_OPEN_SQL}) AS open_issues
            FROM run_logs r
            WHERE r.id IN (SELECT MAX(id) FROM run_logs GROUP BY brand, country)
            ORDER BY r.brand, r.country"""
@@ -202,7 +262,7 @@ def api_health():
 def api_anomalies():
     c = conn()
     out = rows_to_dict(c.execute(
-        "SELECT * FROM maintenance_queue WHERE status='open' ORDER BY detected_at DESC"))
+        f"SELECT * FROM maintenance_queue WHERE {ISSUE_OPEN_SQL_BARE} ORDER BY detected_at DESC"))
     c.close()
     return out
 
@@ -230,13 +290,13 @@ def api_overview():
     kpis["quarters"] = len(quarters)
     kpis["latest_quarter"] = latest
     kpis["open_issues"] = c.execute(
-        "SELECT COUNT(*) n FROM maintenance_queue WHERE status='open'").fetchone()["n"]
+        f"SELECT COUNT(*) n FROM maintenance_queue WHERE {ISSUE_OPEN_SQL_BARE}").fetchone()["n"]
     # 2026-09-18：全品类口径下，总量 KPI 会掩盖品类结构（如"机型 5324 台"里有多少是手机）。
     # 比价/走势一律按 category 分组，故这里同时给出分类别明细。
     kpis["models_by_category"] = {r["category"]: r["n"] for r in rows_to_dict(c.execute(
-        "SELECT COALESCE(category,'phone') category, COUNT(*) n FROM models GROUP BY 1"))}
+        f"SELECT {CAT_FALLBACK_BARE} category, COUNT(*) n FROM models GROUP BY 1"))}
     kpis["price_rows_by_category"] = {r["category"]: r["n"] for r in rows_to_dict(c.execute(
-        """SELECT COALESCE(m.category,'phone') category, COUNT(*) n
+        f"""SELECT {CAT_FALLBACK} category, COUNT(*) n
            FROM price_snapshots ps
            JOIN parts p ON p.id=ps.part_id
            JOIN models m ON m.id=p.model_id
@@ -260,7 +320,7 @@ def api_overview():
     #   empty       无任何价行，从未成功抓到
     # 同时保留 status（本轮运行状态，见下方 taxonomy）供排查，两者语义不同，前端分别展示。
     cov = rows_to_dict(c.execute(
-        """SELECT r.brand, r.country, r.quarter, r.status, r.rows_written,
+        f"""SELECT r.brand, r.country, r.quarter, r.status, r.rows_written,
                   r.anomaly_flag, r.anomaly_reason, r.finished_at,
                   (SELECT COUNT(*) FROM price_snapshots ps
                      JOIN parts p ON p.id=ps.part_id
@@ -277,7 +337,7 @@ def api_overview():
                      WHERE s.brand=r.brand AND s.country=r.country
                        AND s.status=?) AS last_success_at,
                   (SELECT COUNT(*) FROM maintenance_queue q
-                     WHERE q.brand=r.brand AND q.country=r.country AND q.status='open') AS open_issues
+                     WHERE q.brand=r.brand AND q.country=r.country AND {ISSUE_OPEN_SQL}) AS open_issues
            FROM run_logs r
            WHERE r.id IN (SELECT MAX(id) FROM run_logs GROUP BY brand, country)
            ORDER BY r.brand, r.country""", (latest, db.STATUS_SUCCESS)))
@@ -311,6 +371,7 @@ def api_overview():
     kpis["coverage"] = {s: sum(1 for r in cov if r["cov_status"] == s)
                         for s in ("ok", "stale", "failed", "unavailable", "empty")}
     kpis["invalid_status_scopes"] = sum(1 for r in cov if r.get("status_unknown"))
+    kpis["invalid_enum_values"] = _invalid_enum_counts(c)
     kpis["coverage_latest_quarter"] = latest
     c.close()
     return {"kpis": kpis, "coverage": cov, "quarters": quarters}
@@ -593,13 +654,13 @@ def api_price_history(brand=None, base_model=None, cat=None, spec=None, color=No
     c = conn()
     if not quarter:
         quarter = db.this_quarter()
-    q = """SELECT ps.quarter, m.country_code country, ps.cny_price cny, ps.price,
+    q = f"""SELECT ps.quarter, m.country_code country, ps.cny_price cny, ps.price,
                   ps.currency, ps.material_fee, ps.labor_fee, ps.source_url,
                   ps.tax_included, ps.captured_at,
                   ps.has_labor_split, ps.labor_note, ps.labor_source_url, ps.is_seed,
                   ps.rate_source, ps.rate_as_of, ps.source_url_kind,
                   ps.is_reference, ps.reference_region,
-                  m.name model_name, COALESCE(m.category,'phone') model_category,
+                  m.name model_name, {CAT_FALLBACK} model_category,
                   m.model_url, m.model_url_kind,
                   m.model_url_locator, m.model_url_verified, m.model_page_url
            FROM price_snapshots ps
@@ -619,7 +680,7 @@ def api_price_history(brand=None, base_model=None, cat=None, spec=None, color=No
     if color:
         q += " AND m.color=?"; args.append(color)
     if category:
-        q += " AND COALESCE(m.category,'phone')=?"; args.append(category)
+        q += f" AND {CAT_FALLBACK}=?"; args.append(category)
     q += " ORDER BY m.country_code, ps.quarter"
     rows = rows_to_dict(c.execute(q, args))
     c.close()
@@ -699,7 +760,7 @@ def api_tier_matrix(tier=None, country=None, quarter=None, category=None):
     c = conn()
     if not quarter:
         quarter = db.this_quarter()
-    q = """SELECT b.name brand, m.base_model, m.spec, m.color, m.country_code country,
+    q = f"""SELECT b.name brand, m.base_model, m.spec, m.color, m.country_code country,
                   COALESCE(p.canonical_name, p.name) pname,
                   COALESCE(p.canonical_spec, '') pspec,
                   COALESCE(p.canonical_type, p.part_type) cat, ps.cny_price cny,
@@ -708,8 +769,13 @@ def api_tier_matrix(tier=None, country=None, quarter=None, category=None):
            JOIN parts p ON p.id=ps.part_id
            JOIN models m ON m.id=p.model_id
            JOIN brands b ON b.id=m.brand_id
-           WHERE ps.quarter=? AND m.tier=? AND COALESCE(m.category,'phone')=?"""
-    cat = (category or "phone").strip() or "phone"
+           WHERE ps.quarter=? AND m.tier=? AND {CAT_FALLBACK}=?"""
+    # 品类过滤值：空 → 默认品类（保持既有行为）。非法值**告警**但不放行——
+    # 静默返回 0 行会让人误以为"这个品类真的没数据"，实际是参数写错了。
+    if category and category not in db.VALID_CATEGORIES:
+        print(f"[warn] 非法 category={category!r}；合法值 {sorted(db.VALID_CATEGORIES)}",
+              file=sys.stderr, flush=True)
+    cat = (category or db.DEFAULT_CATEGORY).strip() or db.DEFAULT_CATEGORY
     args = [quarter, tier, cat]
     if country:
         q += " AND m.country_code=?"; args.append(country)

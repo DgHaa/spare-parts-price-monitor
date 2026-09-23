@@ -57,21 +57,16 @@ STATUS_PRIORITY = (STATUS_FAILED, STATUS_PARTIAL, STATUS_SUCCESS,
 
 
 def validate_status(status):
-    """校验 run_logs.status 合法性；非法时抛 ValueError，并给出最接近的合法值提示。"""
+    """校验 run_logs.status 合法性；非法时抛 ValueError，并给出拼写纠错提示。"""
     if status in VALID_STATUSES:
         return status
-    # 拼写纠错提示：优先大小写差异，其次编辑距离最近者
-    low = str(status).strip().lower()
-    for s in VALID_STATUSES:
-        if s.lower() == low:
-            raise ValueError(
-                f"非法 run_logs.status={status!r}：大小写不匹配，应为 {s!r}")
-    best, best_d = None, 99
-    for s in VALID_STATUSES:
-        d = _edit_distance(low, s)
-        if d < best_d:
-            best, best_d = s, d
-    hint = f"，是否想写 {best!r}？" if best and best_d <= 3 else ""
+    if status is not None:
+        low = str(status).strip().lower()
+        for s in VALID_STATUSES:
+            if s.lower() == low:
+                raise ValueError(
+                    f"非法 run_logs.status={status!r}：大小写不匹配，应为 {s!r}")
+    hint = _spelling_hint(status or "", VALID_STATUSES)
     raise ValueError(
         f"非法 run_logs.status={status!r}{hint}；合法值：{sorted(VALID_STATUSES)}")
 
@@ -88,6 +83,24 @@ def _edit_distance(a, b):
                            prev[j - 1] + (ca != cb)))
         prev = cur
     return prev[-1]
+
+
+def _spelling_hint(value, valid):
+    """给出「是否想写 X？」提示；不确定时返回空串（宁可不说，也别误导）。
+
+    仅在**编辑距离明显小于候选长度**时才提示。这条约束是为了挡住中文短词的伪匹配：
+    「顶级」与「中端」编辑距离为 2，而两个字的中文词互相比较距离恒为 2，
+    若只看固定阈值就会提示「是否想写 '中端'？」，反而误导。
+    对 'succes'(6) → 'success' 距离 1 < 6，仍会正常提示。
+    """
+    best, best_d = None, 99
+    for s in valid:
+        d = _edit_distance(str(value).strip().lower(), str(s).lower())
+        if d < best_d:
+            best, best_d = s, d
+    if best is not None and best_d <= 2 and best_d < len(str(best)):
+        return f"，是否想写 {best!r}？"
+    return ""
 
 
 def summarize_status(statuses, default=STATUS_SKIPPED):
@@ -118,6 +131,150 @@ def summarize_status(statuses, default=STATUS_SKIPPED):
     return default
 
 
+# ── 其余枚举列（同一加固模式：单源常量 + 写入口断言 + 巡检白名单）─────────────
+# 这些列与 run_logs.status 同病：自由文本、无 CHECK 约束、且被多处读取，其中
+# 存在**静默**消费者 ——
+#   api/server.py  用 COALESCE(m.category,'phone') 兜底：NULL 会被兜成 phone，
+#                  但**拼错的值不会被兜住**，会凭空多出一个分组，静默拆散比价矩阵
+#                  （且按 category 过滤时那一行直接不可见）
+#   api_tiers()    直接 SELECT DISTINCT tier 喂给下拉框：拼错值会变成一个"新档位"选项
+# 分工：写入口断言挡新数据；巡检白名单挡历史遗留与绕过写入口的直接 SQL。
+
+# models.category —— 产品品类。⚠️ 跨品类比价无意义（平板屏幕 ≠ 手机屏幕），
+# 比价矩阵与价格走势都必须按品类分组，故品类写错会静默污染比价结论。
+CATEGORY_PHONE = "phone"
+CATEGORY_TABLET = "tablet"
+CATEGORY_WATCH = "watch"
+CATEGORY_EARBUDS = "earbuds"
+CATEGORY_WEARABLE = "wearable"
+CATEGORY_OTHER = "other"
+VALID_CATEGORIES = frozenset({
+    CATEGORY_PHONE, CATEGORY_TABLET, CATEGORY_WATCH,
+    CATEGORY_EARBUDS, CATEGORY_WEARABLE, CATEGORY_OTHER,
+})
+#: 与 guess_category() 的兜底、api/server.py 的 COALESCE(...,'phone') 保持一致
+DEFAULT_CATEGORY = CATEGORY_PHONE
+
+# models.tier —— 产品档位（"同档位·跨品牌对标"维度的分组键）
+TIER_FLAGSHIP = "旗舰"
+TIER_HIGH = "高端"
+TIER_MID = "中端"
+TIER_ENTRY = "入门"
+VALID_TIERS = frozenset({TIER_FLAGSHIP, TIER_HIGH, TIER_MID, TIER_ENTRY})
+
+# models.model_url_kind —— 机型级取证链接的类型。
+# None 是**合法**值：表示该机型尚未生成/未校验取证链接（库内现有 1445 行为 NULL）。
+MODEL_URL_KIND_API = "model_api"
+MODEL_URL_KIND_TEXT_FRAGMENT = "model_text_fragment"
+MODEL_URL_KIND_PAGE = "model_page"
+MODEL_URL_KIND_CATEGORY_API = "category_api_locator"
+MODEL_URL_KIND_BRAND_ENTRY = "brand_entry"
+VALID_MODEL_URL_KINDS = frozenset({
+    MODEL_URL_KIND_API, MODEL_URL_KIND_TEXT_FRAGMENT, MODEL_URL_KIND_PAGE,
+    MODEL_URL_KIND_CATEGORY_API, MODEL_URL_KIND_BRAND_ENTRY,
+})
+
+# price_snapshots.source_url_kind —— ⚠️ 与 models.model_url_kind 是**两套不同词汇表**：
+# 取值是后者的子集，另多一个 reference_cn（is_reference=1 借用参考区价格时的标注）。
+# 这里刻意**共享值常量、各自定义集合** —— 往 models 新增一种 kind 时，不应静默把
+# price_snapshots 也放开（反之亦然）。这正是 run_logs.status 与 KB status 同名的教训。
+SNAPSHOT_URL_KIND_REFERENCE_CN = "reference_cn"
+VALID_SNAPSHOT_URL_KINDS = frozenset({
+    MODEL_URL_KIND_API, MODEL_URL_KIND_TEXT_FRAGMENT, MODEL_URL_KIND_PAGE,
+    MODEL_URL_KIND_CATEGORY_API, MODEL_URL_KIND_BRAND_ENTRY,
+    SNAPSHOT_URL_KIND_REFERENCE_CN,   # 仅此列有；文档化意图（当前 is_reference=1 为 0 行）
+})
+
+# maintenance_queue.status —— 待修工单状态
+ISSUE_OPEN = "open"
+ISSUE_RESOLVED = "resolved"
+ISSUE_WONT_FIX = "wont_fix"   # 文档化的第三态；目前无代码写入，保留意图
+VALID_ISSUE_STATUSES = frozenset({ISSUE_OPEN, ISSUE_RESOLVED, ISSUE_WONT_FIX})
+
+# exchange_rates.rate_source —— 汇率来源。形状为 "static" 或 "live:<endpoint>"，
+# 是**前缀模式**而非穷举集合（端点会随数据源变化），故放行 "live:" 前缀。
+RATE_SOURCE_STATIC = "static"
+RATE_SOURCE_LIVE_PREFIX = "live:"
+
+# brands.recipe_mode —— 抓取配方类型（取值来自 KB 的 query.mode）
+RECIPE_FORM_SELECT_CASCADE = "form_select_cascade"
+RECIPE_API_REBORN = "api_reborn"
+RECIPE_SAMSUNG_API = "samsung_api"
+RECIPE_VIVO_API = "vivo_api"
+RECIPE_XIAOMI_API = "xiaomi_api"
+VALID_RECIPE_MODES = frozenset({
+    RECIPE_FORM_SELECT_CASCADE, RECIPE_API_REBORN, RECIPE_SAMSUNG_API,
+    RECIPE_VIVO_API, RECIPE_XIAOMI_API,
+})
+
+
+def _validate_enum(value, valid, label, allow_none=False, prefix_ok=()):
+    """通用枚举校验：非法即抛 ValueError，并附拼写纠错提示。
+
+    allow_none=True  —— 用于 NULL 有明确含义的列（如 model_url_kind=None 表示未生成链接）
+    prefix_ok        —— 用于前缀模式列（如 rate_source 的 "live:<endpoint>"）
+    """
+    if value is None:
+        if allow_none:
+            return value
+        raise ValueError(f"非法 {label}=None；合法值：{sorted(valid)}")
+    if value in valid:
+        return value
+    if isinstance(value, str):
+        for p in prefix_ok:
+            if value.startswith(p) and len(value) > len(p):
+                return value
+        low = value.strip().lower()
+        for s in valid:
+            if str(s).lower() == low:
+                raise ValueError(f"非法 {label}={value!r}：大小写不匹配，应为 {s!r}")
+        hint = _spelling_hint(value, valid)
+        raise ValueError(f"非法 {label}={value!r}{hint}；合法值：{sorted(valid)}")
+    raise ValueError(f"非法 {label}={value!r}；合法值：{sorted(valid)}")
+
+
+def validate_category(v):
+    """校验 models.category（产品品类）。"""
+    return _validate_enum(v, VALID_CATEGORIES, "models.category")
+
+
+def validate_tier(v):
+    """校验 models.tier（产品档位）。"""
+    return _validate_enum(v, VALID_TIERS, "models.tier")
+
+
+def validate_model_url_kind(v):
+    """校验 models.model_url_kind（None 合法 = 尚未生成取证链接）。"""
+    return _validate_enum(v, VALID_MODEL_URL_KINDS, "models.model_url_kind",
+                          allow_none=True)
+
+
+def validate_issue_status(v):
+    """校验 maintenance_queue.status（待修工单状态）。"""
+    return _validate_enum(v, VALID_ISSUE_STATUSES, "maintenance_queue.status")
+
+
+def validate_recipe_mode(v):
+    """校验 brands.recipe_mode（None 合法 = 未指定抓取配方）。"""
+    return _validate_enum(v, VALID_RECIPE_MODES, "brands.recipe_mode",
+                          allow_none=True)
+
+
+def validate_rate_source(v):
+    """校验 exchange_rates / price_snapshots 的 rate_source。
+
+    None 合法 = 历史行未记录来源。
+    """
+    return _validate_enum(v, {RATE_SOURCE_STATIC}, "exchange_rates.rate_source",
+                          allow_none=True, prefix_ok=(RATE_SOURCE_LIVE_PREFIX,))
+
+
+def validate_snapshot_url_kind(v):
+    """校验 price_snapshots.source_url_kind（None 合法 = 未标注链接粒度）。"""
+    return _validate_enum(v, VALID_SNAPSHOT_URL_KINDS,
+                          "price_snapshots.source_url_kind", allow_none=True)
+
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS brands (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -139,15 +296,22 @@ CREATE TABLE IF NOT EXISTS models (
   model_key TEXT,
   source_url TEXT,
   discovered_at TEXT,
-  category TEXT DEFAULT 'phone',  -- 产品品类：phone/tablet/watch/earbuds/wearable/other
+  category TEXT DEFAULT 'phone',  -- 产品品类，合法值见 VALID_CATEGORIES（写入口 validate_category）
+                                  -- phone/tablet/watch/earbuds/wearable/other
                                   -- ⚠️ 跨品类比价无意义（平板屏幕 ≠ 手机屏幕），比价矩阵必须按品类分组
-  tier TEXT,               -- 产品档位：旗舰/高端/中端/入门（公平跨品牌比价的关键维度）
+                                  -- 尚无 DB 级 CHECK：改错会在 COALESCE(...,'phone') 之外多出一个分组，
+                                  -- 静默拆散矩阵，故由 tools/verify_quarterly_run.py 白名单巡检兜底
+  tier TEXT,               -- 产品档位，合法值见 VALID_TIERS：旗舰/高端/中端/入门
+                           -- （公平跨品牌比价的关键维度）
   base_model TEXT,         -- 归一化基础机型(去规格/颜色)，跨规格聚合比价键
   spec TEXT,               -- 规格/SKU(如 8GB+256GB)，同基础机型不同规格备件价可能不同
   -- 机型级取证链接（"一机一链"）：source_url 只到品牌入口页不足以举证，
   -- 下列字段记录『这一台机型』的实际链接、类型、定位方式与真实校验结果。
   model_url TEXT,          -- 机型级链接：点开即可核对该机型价格
-  model_url_kind TEXT,     -- model_api / model_text_fragment / model_page / category_api_locator / brand_entry
+  model_url_kind TEXT,     -- 取证链接类型，合法值见 VALID_MODEL_URL_KINDS（写入口校验）：
+                           --   model_api / model_text_fragment / model_page /
+                           --   category_api_locator / brand_entry
+                           -- NULL 合法 = 尚未生成/未校验取证链接
   model_url_locator TEXT,  -- 机型在该链接内容中的定位（JSON 路径 / 机型 tag / 表行文本）
   model_url_verified INTEGER DEFAULT 0,  -- 1=已实际请求并确认命中该机型；0=未校验/未命中
   model_url_checked_at TEXT,             -- 校验时点(ISO)
@@ -196,9 +360,12 @@ CREATE TABLE IF NOT EXISTS price_snapshots (
   labor_source_url TEXT,          -- 人工费证据来源页 URL
   -- 数据可信度（P1-2 / P0-2）
   is_seed INTEGER DEFAULT 0,      -- 1=演示/种子数据(不可作真实结论)；0=真实抓取
-  rate_source TEXT,               -- 汇率来源：live:<endpoint> / static(legacy) / static
+  rate_source TEXT,               -- 汇率来源，前缀模式（写入口 validate_rate_source）：
+                                  --   "static" 或 "live:<endpoint>"；NULL = 历史行未记录
   rate_as_of TEXT,                -- 汇率时点(ISO)，用于折算可信度标注
-  source_url_kind TEXT,           -- 该行 source_url 的粒度：见 models.model_url_kind
+  source_url_kind TEXT,           -- 该行 source_url 的粒度，合法值见 VALID_SNAPSHOT_URL_KINDS
+                                  -- ⚠️ 与 models.model_url_kind 是两套词汇表（本列多 reference_cn），
+                                  -- 刻意不共用集合（写入口 validate_snapshot_url_kind）
   -- 参考价（B 方案，2026-09-23）：本地官方无价时，借用同机型 CN 官方价填充，
   -- 必须明确标注、绝不参与本地价差放大。
   is_reference INTEGER DEFAULT 0, -- 1=参考价（非本地官方价）；0=本地官方抓取
@@ -218,7 +385,7 @@ CREATE TABLE IF NOT EXISTS exchange_rates (
   quarter TEXT,
   currency TEXT,
   rate_to_cny REAL,
-  rate_source TEXT,               -- live:<endpoint> / static
+  rate_source TEXT,               -- 汇率来源，同上（static 或 live:<endpoint>）
   rate_as_of TEXT,                -- 汇率快照时点(ISO)
   PRIMARY KEY(quarter, currency)
 );
@@ -250,7 +417,9 @@ CREATE TABLE IF NOT EXISTS maintenance_queue (
   country TEXT,
   detected_at TEXT,
   issue_summary TEXT,
-  status TEXT DEFAULT 'open',   -- open / resolved / wont_fix
+  status TEXT DEFAULT 'open',   -- 待修工单状态，合法值见 VALID_ISSUE_STATUSES
+                                -- （写入口常量 ISSUE_OPEN / ISSUE_RESOLVED / ISSUE_WONT_FIX）
+                                -- open / resolved / wont_fix
   diagnosis TEXT,
   proposed_fix TEXT,
   resolved_at TEXT,
@@ -585,6 +754,9 @@ def this_quarter(dt=None):
 
 
 def upsert_brand(name, recipe_mode=None, note="", conn=None):
+    # 枚举列写入口校验：配方类型来自 KB 的 query.mode，写错会让 _job_needs_browser
+    # 误判该品牌是否需要浏览器（进而影响并发池划分），故在此拦下。
+    recipe_mode = validate_recipe_mode(recipe_mode)
     own = conn is None
     c = conn or get_conn()
     cur = c.execute("INSERT INTO brands(name, recipe_mode, note) VALUES(?,?,?) "
@@ -631,6 +803,11 @@ def upsert_model(brand_id, country_code, name, model_key=None, source_url="", ti
         edition = extract_edition(name)
     if tier is None:
         tier = classify_tier(name)
+    # 枚举列写入口校验（fail fast）：品类写错会静默拆散比价矩阵分组，
+    # 档位写错会在"同档位对标"里凭空多出一个选项，故一律在此拦下。
+    category = validate_category(category)
+    tier = validate_tier(tier)
+    model_url_kind = validate_model_url_kind(model_url_kind)
     own = conn is None
     c = conn or get_conn()
     c.execute("""INSERT INTO models(brand_id, country_code, name, model_key, source_url, discovered_at,
@@ -748,6 +925,10 @@ def insert_snapshot(part_id, quarter, price, currency, cny_price,
       而是借用 reference_region（如 'cn'）同机型的官方价作参考。前端必须显式标注、
       且**不参与本地价差归因**（其 cny_price 等于参考区原值，天然不会制造假价差）。
     """
+    # 枚举列写入口校验：链接粒度写错会让前端"这条价格是否精确到本机型"的标注说谎；
+    # 汇率来源写错会让折算可信度标注失真。
+    rate_source = validate_rate_source(rate_source)
+    source_url_kind = validate_snapshot_url_kind(source_url_kind)
     own = conn is None
     c = conn or get_conn()
     c.execute("""INSERT INTO price_snapshots(part_id, quarter, price, currency, cny_price,
@@ -786,6 +967,7 @@ def upsert_third_party(brand, part_type, quarter, ref_cny, note="", conn=None):
 
 
 def set_rate(quarter, currency, rate, source="static", as_of=None):
+    source = validate_rate_source(source)
     conn = get_conn()
     conn.execute("""INSERT INTO exchange_rates(quarter, currency, rate_to_cny, rate_source, rate_as_of)
                    VALUES(?,?,?,?,?)
@@ -833,7 +1015,7 @@ def fetch_rates(quarter):
     import urllib.request
     as_of = _now_iso()
     live = {}
-    src = "static"
+    src = RATE_SOURCE_STATIC
     try:
         with urllib.request.urlopen("https://open.er-api.com/v6/latest/USD", timeout=10) as r:
             data = json.loads(r.read().decode("utf-8"))
@@ -844,12 +1026,13 @@ def fetch_rates(quarter):
                 if not per_usd:
                     continue
                 live[cur] = 1.0 if cur == "CNY" else usd_cny / per_usd
-            src = "live:open.er-api.com"
+            src = RATE_SOURCE_LIVE_PREFIX + "open.er-api.com"
     except Exception as e:
         sys.stderr.write(f"[warn] 实时汇率获取失败，回退 STATIC_RATES: {e}\n")
     # 合并静态兜底（实时未覆盖的币种）
     for cur, rt in STATIC_RATES.items():
         live.setdefault(cur, rt)
+    src = validate_rate_source(src)
     # 批量落库：旧实现对每个币种各调一次 set_rate（各建一次连接 + 各跑一次
     # PRAGMA journal_mode=WAL ≈116ms），166 个币种就要 ~19s；这里单连接单事务
     # executemany 一次写完（实测 <0.1s）。落库失败不阻断抓取——get_rate 会回退静态汇率。
@@ -896,15 +1079,16 @@ def add_issue(brand, country, issue_summary, conn=None):
     """把异常写入待修队列；同 brand/country 已有 open 项则去重跳过。返回 issue id 或 None。"""
     own = conn is None
     c = conn or get_conn()
-    ex = c.execute("SELECT 1 FROM maintenance_queue WHERE brand=? AND country=? AND status='open'",
-                   (brand, country)).fetchone()
+    ex = c.execute("SELECT 1 FROM maintenance_queue WHERE brand=? AND country=? AND status=?",
+                   (brand, country, ISSUE_OPEN)).fetchone()
     if ex:
         if own:
             c.close()
         return None
     cur = c.execute(
-        "INSERT INTO maintenance_queue(brand,country,detected_at,issue_summary,status) VALUES(?,?,?,?, 'open')",
-        (brand, country, datetime.now().isoformat(timespec="seconds"), issue_summary))
+        "INSERT INTO maintenance_queue(brand,country,detected_at,issue_summary,status) VALUES(?,?,?,?,?)",
+        (brand, country, datetime.now().isoformat(timespec="seconds"), issue_summary,
+         ISSUE_OPEN))
     iid = cur.lastrowid
     if own:
         c.commit(); c.close()
@@ -914,16 +1098,18 @@ def add_issue(brand, country, issue_summary, conn=None):
 def open_issues():
     conn = get_conn()
     out = rows_to_dict(conn.execute(
-        "SELECT * FROM maintenance_queue WHERE status='open' ORDER BY detected_at DESC"))
+        "SELECT * FROM maintenance_queue WHERE status=? ORDER BY detected_at DESC",
+        (ISSUE_OPEN,)))
     conn.close(); return out
 
 
 def resolve_issue(issue_id, diagnosis="", proposed_fix="", resolved_by="agent"):
     conn = get_conn()
     conn.execute(
-        """UPDATE maintenance_queue SET status='resolved', diagnosis=?, proposed_fix=?,
+        """UPDATE maintenance_queue SET status=?, diagnosis=?, proposed_fix=?,
                   resolved_at=?, resolved_by=? WHERE id=?""",
-        (diagnosis, proposed_fix, datetime.now().isoformat(timespec="seconds"), resolved_by, issue_id))
+        (ISSUE_RESOLVED, diagnosis, proposed_fix,
+         datetime.now().isoformat(timespec="seconds"), resolved_by, issue_id))
     conn.commit(); conn.close()
 
 
