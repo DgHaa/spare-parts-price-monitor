@@ -936,12 +936,17 @@ def _country_in_db(code):
         c.close()
 
 def _sync_kb_before_crawl(log_f):
-    """重新抓取前先把项目 KB 部署到 skill（运行时 executor 实际读取的副本）。
+    """重新抓取前把项目 KB 部署到 skill，保持「脱离仓库时 skill 仍可用」。
 
-    运行 tools/sync_kb.py（项目->skill 部署，等同「抓取前先 sync_kb.py --check」的增强版：
-    不仅报告漂移，还会把 repo 较新/独有的 KB 文件部署到 skill，从而真正避免「改了项目 KB
-    却因 skill 副本滞后而静默 [skip]」回潮；skill 较新的文件标记 conflict 不覆盖
-    （如 google.json 仅时间戳差异）。输出写入抓取日志，并返回简短摘要供前端展示。
+    ⚠️ 2026-09-23 实测校正：本函数**不再**是「不做就会被静默 [skip]」的必需步骤。
+    运行时的 executor 来自仓库 `vendor/executor.py`（core.py 把 vendor/ 插在
+    sys.path 最前），其 KB_DIR 解析到**仓库** `references/kb`——KB 改动在仓库内
+    立即生效，无需部署。skill 侧 KB 只在 vendor/ 缺失时回退、或该 skill 被其它
+    项目单独调用时使用。
+
+    因此保留本步骤的理由是「镜像一致性」，而非「让本次抓取生效」；
+    代价是抓取前多一次 KB 复制。运行 tools/sync_kb.py（repo 较新/独有的部署，
+    skill 较新的标记 conflict 不覆盖）。输出写入抓取日志，并返回简短摘要供前端展示。
     """
     summary = {"ran": False, "deployed": 0, "conflicts": [], "note": ""}
     try:

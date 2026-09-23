@@ -5,12 +5,17 @@
 
   | 文件 | 运行时真正的源 | 谁负责同步 | 方向 |
   |---|---|---|---|
-  | `references/kb/*.json`          | **skill**（executor.load_record 的 KB_DIR） | `tools/sync_kb.py` | repo → skill |
+  | `references/kb/*.json`          | **repo**（2026-09-23 实测：vendor/ 优先，KB_DIR 解析到仓库） | `tools/sync_kb.py` | repo → skill |
   | `vendor/executor.py`            | **repo**（core.py 把 vendor/ 插 sys.path 最前） | 本工具 | repo → skill |
   | `vendor/normalize.py`           | **repo**（同上）                            | 本工具 | repo → skill |
   | `references/calibration/*`      | **repo**（_paths.py 全相对路径，仓库为家）   | 本工具 | repo → skill |
 
-  KB 刻意**不**由本工具处理：两个工具管同一批文件但方向相反，是历史事故来源
+  实测判据：`from crawler.run import run_all; import executor` →
+  `vendor/executor.py` + `<仓库>/references/kb`。故**四类文件在仓库内运行时
+  都以仓库为真源**，改动立即生效；sync 系列工具统一只服务于「保持 skill 镜像/
+  脱离仓库时可用」，不再是「不同步就不生效」。
+
+  KB 仍刻意**不**由本工具处理：两个工具管同一批文件，混用是历史事故来源
   （曾把项目里新增的 apple/cn 等 KB 条目用 skill 旧副本覆盖回 [skip]）。
 
 用法：

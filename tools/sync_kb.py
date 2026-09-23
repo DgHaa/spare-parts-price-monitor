@@ -1,41 +1,42 @@
 #!/usr/bin/env python3
 """部署 项目 references/kb -> skill references/kb，并检测双向漂移。
 
-== 为什么需要这个工具（已踩过的坑）==
+== 运行时到底读哪份 KB（2026-09-23 实测校正，此前文档写反了）==
 
-  crawler/run.py 通过 crawler/core.py 把 skill 的 scripts/ 目录注入 sys.path，
-  然后 `import executor` 解析到 **skill** 里的 scripts/executor.py。
-  而 executor.load_record 的 KB_DIR = <skill>/references/kb
-  （executor.py 位于 skill 包内，parent.parent 即 skill 根）。
+  结论：**crawler.run 读的是仓库 KB**，不是 skill KB。
 
-  因此：
-    - 项目 references/kb/*.json  = git 源（你编辑、提交的地方）
-    - skill references/kb/*.json = 运行时真正被读取的副本
+  实测（判据是 import 结果，不是推理）：
+      $ python -c "from crawler.run import run_all; import executor; print(executor.__file__, executor.KB_DIR)"
+      C:\\...\\spare-parts-monitor\\vendor\\executor.py
+      C:\\...\\spare-parts-monitor\\references\\kb
 
-  只改项目 KB 而不同步到 skill，crawler.run 会因 load_record 读不到而
-  静默 [skip] 该 品牌×国家（vivo/cn 曾因此被误 skip，排查良久）。
+  原因：crawler/core.py 按 (SKILL_CALIB, SKILL_SCRIPTS, VENDOR) 逆序 insert(0)，
+  最终 **vendor/ 排在最前**（源码注释即「仓库内已同步的副本优先」），
+  故 `import executor` 命中仓库 vendor/executor.py，
+  其 KB_DIR = <仓库>/references/kb。
 
-  本工具把「项目 -> skill」的部署固化下来，并提供 --check 漂移检测，
-  在跑 crawler.run 之前先确认 KB 已部署，杜绝静默跳过。
+  ⚠️ 本工具旧版文档称「import executor 解析到 skill 的 scripts/executor.py，
+  不同步到 skill 就会被静默 [skip]」——那是 vendor/ 提权**之前**的状态，
+  现已不成立。历史事故（vivo/cn 被误 skip）也属于那个时期。
+
+  那么本工具还有什么用？——**保持 skill 作为独立副本可用**：
+    - 当仓库 vendor/ 缺失时，core.py 回退到 SKILL_SCRIPTS，
+      此时 KB_DIR 才解析到 <skill>/references/kb，读的就是本工具部署的副本；
+    - 该 skill 被**其它项目**单独调用时（不经过本仓库），走的是它自己的 scripts/ + KB。
+
+  即：KB 的真源始终是仓库；部署是为了「脱离仓库时仍然一致」，
+  **不再**是为了让 crawler.run 生效。
 
 == 与 tools/sync_skill_deps.py 的分工 ==
-
-  两者管的是**不同文件**，方向也**相反**，请勿混用（2026-09-22 起明确划分）：
-
-    本工具          ：references/kb/*.json          仓库 -> skill（KB 是 skill 生效）
-    sync_skill_deps ：vendor/executor.py            仓库 -> skill（executor 是仓库生效）
-                      vendor/normalize.py           仓库 -> skill
-                      references/calibration/*      仓库 -> skill
-
-  即：**KB 的真源是仓库、但要部署到 skill 才生效**；executor/normalize/标定脚本的真源
-  也是仓库、且**仓库副本直接生效**（core.py 把 vendor/ 插在 sys.path 最前）。
-  两者的共同点：都请在**仓库**改，改完再同步镜像。
+  （两者管的文件不重叠，可以放心各自运行；旧文档所称「方向相反」的说法同样已被上述
+   实测校正——在仓库内运行时，vendor/executor.py、vendor/normalize.py 与
+   references/kb/*.json **全部**以仓库为真源。sync 系列工具统一服务于「镜像 skill」。）
 
   sync_skill_deps.py 默认只读，且会**拒绝覆盖比源更新的文件**——若它报 exit 2，
   通常说明有人改在了不生效的那一侧（如改了 skill 的 scripts/executor.py）。
 
 用法：
-  python tools/sync_kb.py --check   # 只检测 drift，不写盘（推荐跑 crawler.run 前先跑）
+  python tools/sync_kb.py --check   # 只检测 drift，不写盘
   python tools/sync_kb.py           # 部署项目 KB -> skill（仅复制有差异的文件）
   python tools/sync_kb.py --all     # 全量覆盖（含 skill 比项目新的文件；谨慎，不删 skill 独有）
 """
