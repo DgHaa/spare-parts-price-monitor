@@ -607,13 +607,18 @@ def captured_model_keys(brand_id, country_code, quarter):
     断点续跑原本只跳过"写库"，仍会对每台已抓机型重复 POST 取价（275 台约 5 分钟白跑）。
     注意：官方无备件价（partPriceList 为空）的机型不入库，故不在本集合内，
     重跑时仍会再取一次（属预期，宁多一次请求也不误判为"已抓"）。
+
+    参考价（is_reference=1）必须排除：它不是本地官方价，只是借用他国同机型的价。
+    若把它算作"已抓到价"，那些'仅因参考价而存在行'的机型会被永久跳过，再也拿不到
+    真实本地价 —— 2026-09-23 de 重抓即因此漏掉 20 台（参考价机型与国际机型同名所致）。
     """
     conn = get_conn()
     rows = conn.execute(
         """SELECT DISTINCT m.model_key FROM price_snapshots ps
            JOIN parts p ON p.id=ps.part_id
            JOIN models m ON m.id=p.model_id
-           WHERE m.brand_id=? AND m.country_code=? AND ps.quarter=?""",
+           WHERE m.brand_id=? AND m.country_code=? AND ps.quarter=?
+             AND COALESCE(ps.is_reference, 0)=0""",
         (brand_id, country_code, quarter)).fetchall()
     conn.close()
     return {r["model_key"] for r in rows if r["model_key"]}

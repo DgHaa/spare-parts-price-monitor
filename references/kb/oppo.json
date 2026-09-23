@@ -28,7 +28,7 @@
             "candidate_hosts": [
               "sow-cms.oppo.com"
             ],
-            "product_list": "/basic/v1/getProduct",
+            "product_list": "/basic/v1/getProductInfo",
             "price_detail": "/basic/v1/getPartPriceNew",
             "region": "CN",
             "region_iso": "cn",
@@ -43,7 +43,8 @@
             "model_code_field": "marketingModelCode",
             "deep_link": "https://support.oppo.com/cn/spare-parts-price/#/detail?marketingModelCode={code}",
             "model_match_note": "机型名匹配必须优先『精确相等』（忽略大小写/前后空白），再退回子串。cn 全表内含 'pad 5' 的机型有 3 个：OPPO Pad 5(80ab，屏幕850/11条) / OPPO Pad 5 柔光版(1ca4，屏幕950/9条) / OPPO Pad 5 Pro(3ed5，屏幕999)。旧的子串匹配会先命中『柔光版』，取到 950/9 —— 这正是此前误判『抓取不全面/价格不一致』的真因。已实测：代理与直连返回价格完全一致（Pad5 850/11 两种出口都一样），所谓『经代理取到另一套价』不成立，故 bypass_proxy=false。",
-            "note": "OPPO 官网 2026 起备件价改走 REBORN 接口：POST /basic/v1/getProduct(region/regionIsoCode2/brandCode/isoLanguageCode/sourceRoute) 取全量机型(含 marketingModelCode)，再 POST /basic/v1/getPartPriceNew(+marketingModelCode) 取价；partPriceList[].childList[] 内 retailPrice=备件费、laborCostAmount=人工费(官网单列)。旧 sgp /cnw/v1/GetPartPrice(productModel=) 为遗留端点，机型覆盖不全——cn 的 OPPO Pad 5/Pad 6 等平板在旧端点查无数据、新端点有价，故 cn 必须走本模式。必须 POST，GET 返空。"
+            "note": "OPPO 官网 2026 起备件价改走 REBORN 接口：POST /basic/v1/getProduct(region/regionIsoCode2/brandCode/isoLanguageCode/sourceRoute) 取全量机型(含 marketingModelCode)，再 POST /basic/v1/getPartPriceNew(+marketingModelCode) 取价；partPriceList[].childList[] 内 retailPrice=备件费、laborCostAmount=人工费(官网单列)。旧 sgp /cnw/v1/GetPartPrice(productModel=) 为遗留端点，机型覆盖不全——cn 的 OPPO Pad 5/Pad 6 等平板在旧端点查无数据、新端点有价，故 cn 必须走本模式。必须 POST，GET 返空。【2026-09-23 切换】机型表端点由 /basic/v1/getProduct 改为 /basic/v1/getProductInfo：前者只返回**在售精选**机型（de 实测仅 10 台），后者返回**区域产品目录全集**（de 192 / ae 196 / tr 175 / mx 136 / my 254 / jp 47 / cn 620）。两者字段名一致（marketingModelName/marketingModelCode），取价链路不变；getProductInfo 额外提供 certifiedModels（CPH 全球编码）与 productCategoryCode。注意：它返回的品类字段是 productCategoryName/productCategoryCode（无 categoryName），且含 'OPPOXSend To Os/ES' 等脏条目，需过滤。",
+            "category_filter_by_code": null
           }
         },
         "extract": {
@@ -96,7 +97,7 @@
               "sow-cms.oppo.com",
               "sgp-sow-cms.oppo.com"
             ],
-            "product_list": "/basic/v1/getProduct",
+            "product_list": "/basic/v1/getProductInfo",
             "price_detail": "/basic/v1/getPartPriceNew",
             "region": "DE",
             "region_iso": "de",
@@ -111,7 +112,8 @@
             "model_code_field": "marketingModelCode",
             "deep_link": "https://support.oppo.com/de/spare-parts-price/#/detail?marketingModelCode={code}",
             "model_match_note": "机型名匹配必须精确优先（忽略大小写/空白）再退子串——cn 实测三个含 'pad 5' 的机型（Pad 5 850/11、柔光版 950/9、Pro 999），子串匹配会取错价。",
-            "note": "OPPO 官网 2026 起备件价改走 REBORN：POST /basic/v1/getProduct（region=DE/regionIsoCode2=de/isoLanguageCode=de-DE/sourceRoute=1，brandCode=11 仅取 OPPO 品牌：全表含 OnePlus(12)/realme(13)，须过滤）→ 再 POST /basic/v1/getPartPriceNew(+marketingModelCode) 取价。de 实测 10 台 OPPO 机型、本地币种 EUR。必须 POST，GET 返空；区域节点不同（par-sow-cms.oppo.com）。旧 /cnw/v1/GetPartPrice 机型表非区域化（含中国限定版）且各区价格数值相同，已弃用。"
+            "note": "OPPO 官网 2026 起备件价改走 REBORN：POST /basic/v1/getProduct（region=DE/regionIsoCode2=de/isoLanguageCode=de-DE/sourceRoute=1，brandCode=11 仅取 OPPO 品牌：全表含 OnePlus(12)/realme(13)，须过滤）→ 再 POST /basic/v1/getPartPriceNew(+marketingModelCode) 取价。de 实测 10 台 OPPO 机型、本地币种 EUR。必须 POST，GET 返空；区域节点不同（par-sow-cms.oppo.com）。旧 /cnw/v1/GetPartPrice 机型表非区域化（含中国限定版）且各区价格数值相同，已弃用。【2026-09-23 切换】机型表端点由 /basic/v1/getProduct 改为 /basic/v1/getProductInfo：前者只返回**在售精选**机型（de 实测仅 10 台），后者返回**区域产品目录全集**（de 192 / ae 196 / tr 175 / mx 136 / my 254 / jp 47 / cn 620）。两者字段名一致（marketingModelName/marketingModelCode），取价链路不变；getProductInfo 额外提供 certifiedModels（CPH 全球编码）与 productCategoryCode。注意：它返回的品类字段是 productCategoryName/productCategoryCode（无 categoryName），且含 'OPPOXSend To Os/ES' 等脏条目，需过滤。",
+            "category_filter_by_code": null
           }
         },
         "extract": {
@@ -164,7 +166,7 @@
               "sow-cms.oppo.com",
               "par-sow-cms.oppo.com"
             ],
-            "product_list": "/basic/v1/getProduct",
+            "product_list": "/basic/v1/getProductInfo",
             "price_detail": "/basic/v1/getPartPriceNew",
             "region": "TR",
             "region_iso": "tr",
@@ -179,7 +181,8 @@
             "model_code_field": "marketingModelCode",
             "deep_link": "https://support.oppo.com/tr/spare-parts-price/#/detail?marketingModelCode={code}",
             "model_match_note": "机型名匹配必须精确优先（忽略大小写/空白）再退子串——cn 实测三个含 'pad 5' 的机型（Pad 5 850/11、柔光版 950/9、Pro 999），子串匹配会取错价。",
-            "note": "OPPO 官网 2026 起备件价改走 REBORN：POST /basic/v1/getProduct（region=TR/regionIsoCode2=tr/isoLanguageCode=tr-TR/sourceRoute=1，brandCode=11 仅取 OPPO 品牌：全表含 OnePlus(12)/realme(13)，须过滤）→ 再 POST /basic/v1/getPartPriceNew(+marketingModelCode) 取价。tr 实测 29 台 OPPO 机型、本地币种 TRY。必须 POST，GET 返空；区域节点不同（sgp-sow-cms.oppo.com）。旧 /cnw/v1/GetPartPrice 机型表非区域化（含中国限定版）且各区价格数值相同，已弃用。"
+            "note": "OPPO 官网 2026 起备件价改走 REBORN：POST /basic/v1/getProduct（region=TR/regionIsoCode2=tr/isoLanguageCode=tr-TR/sourceRoute=1，brandCode=11 仅取 OPPO 品牌：全表含 OnePlus(12)/realme(13)，须过滤）→ 再 POST /basic/v1/getPartPriceNew(+marketingModelCode) 取价。tr 实测 29 台 OPPO 机型、本地币种 TRY。必须 POST，GET 返空；区域节点不同（sgp-sow-cms.oppo.com）。旧 /cnw/v1/GetPartPrice 机型表非区域化（含中国限定版）且各区价格数值相同，已弃用。【2026-09-23 切换】机型表端点由 /basic/v1/getProduct 改为 /basic/v1/getProductInfo：前者只返回**在售精选**机型（de 实测仅 10 台），后者返回**区域产品目录全集**（de 192 / ae 196 / tr 175 / mx 136 / my 254 / jp 47 / cn 620）。两者字段名一致（marketingModelName/marketingModelCode），取价链路不变；getProductInfo 额外提供 certifiedModels（CPH 全球编码）与 productCategoryCode。注意：它返回的品类字段是 productCategoryName/productCategoryCode（无 categoryName），且含 'OPPOXSend To Os/ES' 等脏条目，需过滤。",
+            "category_filter_by_code": null
           }
         },
         "extract": {
@@ -232,7 +235,7 @@
               "sow-cms.oppo.com",
               "par-sow-cms.oppo.com"
             ],
-            "product_list": "/basic/v1/getProduct",
+            "product_list": "/basic/v1/getProductInfo",
             "price_detail": "/basic/v1/getPartPriceNew",
             "region": "MX",
             "region_iso": "mx",
@@ -247,7 +250,8 @@
             "model_code_field": "marketingModelCode",
             "deep_link": "https://support.oppo.com/mx/spare-parts-price/#/detail?marketingModelCode={code}",
             "model_match_note": "机型名匹配必须精确优先（忽略大小写/空白）再退子串——cn 实测三个含 'pad 5' 的机型（Pad 5 850/11、柔光版 950/9、Pro 999），子串匹配会取错价。",
-            "note": "OPPO 官网 2026 起备件价改走 REBORN：POST /basic/v1/getProduct（region=MX/regionIsoCode2=mx/isoLanguageCode=es-MX/sourceRoute=1，brandCode=11 仅取 OPPO 品牌：全表含 OnePlus(12)/realme(13)，须过滤）→ 再 POST /basic/v1/getPartPriceNew(+marketingModelCode) 取价。mx 实测 53 台 OPPO 机型、本地币种 MXN。必须 POST，GET 返空；区域节点不同（sgp-sow-cms.oppo.com）。旧 /cnw/v1/GetPartPrice 机型表非区域化（含中国限定版）且各区价格数值相同，已弃用。"
+            "note": "OPPO 官网 2026 起备件价改走 REBORN：POST /basic/v1/getProduct（region=MX/regionIsoCode2=mx/isoLanguageCode=es-MX/sourceRoute=1，brandCode=11 仅取 OPPO 品牌：全表含 OnePlus(12)/realme(13)，须过滤）→ 再 POST /basic/v1/getPartPriceNew(+marketingModelCode) 取价。mx 实测 53 台 OPPO 机型、本地币种 MXN。必须 POST，GET 返空；区域节点不同（sgp-sow-cms.oppo.com）。旧 /cnw/v1/GetPartPrice 机型表非区域化（含中国限定版）且各区价格数值相同，已弃用。【2026-09-23 切换】机型表端点由 /basic/v1/getProduct 改为 /basic/v1/getProductInfo：前者只返回**在售精选**机型（de 实测仅 10 台），后者返回**区域产品目录全集**（de 192 / ae 196 / tr 175 / mx 136 / my 254 / jp 47 / cn 620）。两者字段名一致（marketingModelName/marketingModelCode），取价链路不变；getProductInfo 额外提供 certifiedModels（CPH 全球编码）与 productCategoryCode。注意：它返回的品类字段是 productCategoryName/productCategoryCode（无 categoryName），且含 'OPPOXSend To Os/ES' 等脏条目，需过滤。",
+            "category_filter_by_code": null
           }
         },
         "extract": {
@@ -300,7 +304,7 @@
               "sow-cms.oppo.com",
               "par-sow-cms.oppo.com"
             ],
-            "product_list": "/basic/v1/getProduct",
+            "product_list": "/basic/v1/getProductInfo",
             "price_detail": "/basic/v1/getPartPriceNew",
             "region": "MY",
             "region_iso": "my",
@@ -315,7 +319,8 @@
             "model_code_field": "marketingModelCode",
             "deep_link": "https://support.oppo.com/my/spare-parts-price/#/detail?marketingModelCode={code}",
             "model_match_note": "机型名匹配必须精确优先（忽略大小写/空白）再退子串——cn 实测三个含 'pad 5' 的机型（Pad 5 850/11、柔光版 950/9、Pro 999），子串匹配会取错价。",
-            "note": "OPPO 官网 2026 起备件价改走 REBORN：POST /basic/v1/getProduct（region=MY/regionIsoCode2=my/isoLanguageCode=ms-MY/sourceRoute=1，brandCode=11 仅取 OPPO 品牌：全表含 OnePlus(12)/realme(13)，须过滤）→ 再 POST /basic/v1/getPartPriceNew(+marketingModelCode) 取价。my 实测 124 台 OPPO 机型、本地币种 MYR。必须 POST，GET 返空；区域节点不同（sgp-sow-cms.oppo.com）。旧 /cnw/v1/GetPartPrice 机型表非区域化（含中国限定版）且各区价格数值相同，已弃用。"
+            "note": "OPPO 官网 2026 起备件价改走 REBORN：POST /basic/v1/getProduct（region=MY/regionIsoCode2=my/isoLanguageCode=ms-MY/sourceRoute=1，brandCode=11 仅取 OPPO 品牌：全表含 OnePlus(12)/realme(13)，须过滤）→ 再 POST /basic/v1/getPartPriceNew(+marketingModelCode) 取价。my 实测 124 台 OPPO 机型、本地币种 MYR。必须 POST，GET 返空；区域节点不同（sgp-sow-cms.oppo.com）。旧 /cnw/v1/GetPartPrice 机型表非区域化（含中国限定版）且各区价格数值相同，已弃用。【2026-09-23 切换】机型表端点由 /basic/v1/getProduct 改为 /basic/v1/getProductInfo：前者只返回**在售精选**机型（de 实测仅 10 台），后者返回**区域产品目录全集**（de 192 / ae 196 / tr 175 / mx 136 / my 254 / jp 47 / cn 620）。两者字段名一致（marketingModelName/marketingModelCode），取价链路不变；getProductInfo 额外提供 certifiedModels（CPH 全球编码）与 productCategoryCode。注意：它返回的品类字段是 productCategoryName/productCategoryCode（无 categoryName），且含 'OPPOXSend To Os/ES' 等脏条目，需过滤。",
+            "category_filter_by_code": null
           }
         },
         "extract": {
@@ -368,7 +373,7 @@
               "sow-cms.oppo.com",
               "par-sow-cms.oppo.com"
             ],
-            "product_list": "/basic/v1/getProduct",
+            "product_list": "/basic/v1/getProductInfo",
             "price_detail": "/basic/v1/getPartPriceNew",
             "region": "JP",
             "region_iso": "jp",
@@ -383,7 +388,8 @@
             "model_code_field": "marketingModelCode",
             "deep_link": "https://support.oppo.com/jp/spare-parts-price/#/detail?marketingModelCode={code}",
             "model_match_note": "机型名匹配必须精确优先（忽略大小写/空白）再退子串——cn 实测三个含 'pad 5' 的机型（Pad 5 850/11、柔光版 950/9、Pro 999），子串匹配会取错价。",
-            "note": "OPPO 官网 2026 起备件价改走 REBORN：POST /basic/v1/getProduct（region=JP/regionIsoCode2=jp/isoLanguageCode=ja-JP/sourceRoute=1，brandCode=11 仅取 OPPO 品牌：全表含 OnePlus(12)/realme(13)，须过滤）→ 再 POST /basic/v1/getPartPriceNew(+marketingModelCode) 取价。jp 实测 26 台 OPPO 机型、本地币种 JPY。必须 POST，GET 返空；区域节点不同（sgp-sow-cms.oppo.com）。旧 /cnw/v1/GetPartPrice 机型表非区域化（含中国限定版）且各区价格数值相同，已弃用。"
+            "note": "OPPO 官网 2026 起备件价改走 REBORN：POST /basic/v1/getProduct（region=JP/regionIsoCode2=jp/isoLanguageCode=ja-JP/sourceRoute=1，brandCode=11 仅取 OPPO 品牌：全表含 OnePlus(12)/realme(13)，须过滤）→ 再 POST /basic/v1/getPartPriceNew(+marketingModelCode) 取价。jp 实测 26 台 OPPO 机型、本地币种 JPY。必须 POST，GET 返空；区域节点不同（sgp-sow-cms.oppo.com）。旧 /cnw/v1/GetPartPrice 机型表非区域化（含中国限定版）且各区价格数值相同，已弃用。【2026-09-23 切换】机型表端点由 /basic/v1/getProduct 改为 /basic/v1/getProductInfo：前者只返回**在售精选**机型（de 实测仅 10 台），后者返回**区域产品目录全集**（de 192 / ae 196 / tr 175 / mx 136 / my 254 / jp 47 / cn 620）。两者字段名一致（marketingModelName/marketingModelCode），取价链路不变；getProductInfo 额外提供 certifiedModels（CPH 全球编码）与 productCategoryCode。注意：它返回的品类字段是 productCategoryName/productCategoryCode（无 categoryName），且含 'OPPOXSend To Os/ES' 等脏条目，需过滤。",
+            "category_filter_by_code": null
           }
         },
         "extract": {
@@ -436,7 +442,7 @@
               "sow-cms.oppo.com",
               "par-sow-cms.oppo.com"
             ],
-            "product_list": "/basic/v1/getProduct",
+            "product_list": "/basic/v1/getProductInfo",
             "price_detail": "/basic/v1/getPartPriceNew",
             "region": "AE",
             "region_iso": "ae",
@@ -451,7 +457,8 @@
             "model_code_field": "marketingModelCode",
             "deep_link": "https://support.oppo.com/ae/spare-parts-price/#/detail?marketingModelCode={code}",
             "model_match_note": "机型名匹配必须精确优先（忽略大小写/空白）再退子串——cn 实测三个含 'pad 5' 的机型（Pad 5 850/11、柔光版 950/9、Pro 999），子串匹配会取错价。",
-            "note": "OPPO 官网 2026 起备件价改走 REBORN：POST /basic/v1/getProduct（region=AE/regionIsoCode2=ae/isoLanguageCode=ar-AE/sourceRoute=1，brandCode=11 仅取 OPPO 品牌：全表含 OnePlus(12)/realme(13)，须过滤）→ 再 POST /basic/v1/getPartPriceNew(+marketingModelCode) 取价。ae 实测 99 台 OPPO 机型、本地币种 AED。必须 POST，GET 返空；区域节点不同（sgp-sow-cms.oppo.com）。旧 /cnw/v1/GetPartPrice 机型表非区域化（含中国限定版）且各区价格数值相同，已弃用。"
+            "note": "OPPO 官网 2026 起备件价改走 REBORN：POST /basic/v1/getProduct（region=AE/regionIsoCode2=ae/isoLanguageCode=ar-AE/sourceRoute=1，brandCode=11 仅取 OPPO 品牌：全表含 OnePlus(12)/realme(13)，须过滤）→ 再 POST /basic/v1/getPartPriceNew(+marketingModelCode) 取价。ae 实测 99 台 OPPO 机型、本地币种 AED。必须 POST，GET 返空；区域节点不同（sgp-sow-cms.oppo.com）。旧 /cnw/v1/GetPartPrice 机型表非区域化（含中国限定版）且各区价格数值相同，已弃用。【2026-09-23 切换】机型表端点由 /basic/v1/getProduct 改为 /basic/v1/getProductInfo：前者只返回**在售精选**机型（de 实测仅 10 台），后者返回**区域产品目录全集**（de 192 / ae 196 / tr 175 / mx 136 / my 254 / jp 47 / cn 620）。两者字段名一致（marketingModelName/marketingModelCode），取价链路不变；getProductInfo 额外提供 certifiedModels（CPH 全球编码）与 productCategoryCode。注意：它返回的品类字段是 productCategoryName/productCategoryCode（无 categoryName），且含 'OPPOXSend To Os/ES' 等脏条目，需过滤。",
+            "category_filter_by_code": null
           }
         },
         "extract": {

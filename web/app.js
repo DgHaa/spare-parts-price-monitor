@@ -636,7 +636,15 @@
         let loC = "", hiC = "";
         countries.forEach((c, i) => {
           const v = vals[i];
-          if (v == null) { html += '<td class="muted">—</td>'; return; }
+          if (v == null) {
+            // 留白如实：该区域官方**没有**此项备件价。两种成因（2026-09-23 起可区分）：
+            //   ① 该机型不在当地产品目录里（OPPO 各区域目录不同，机型本就不在当地销售）；
+            //   ② 机型在当地目录中，但官方未公布该项备件价。
+            // 两者都不编造、不借他国价充数，故统一留白并说明。
+            html += '<td class="muted" title="该区域官方未公布此项备件价：'
+              + '该机型可能不在当地产品目录中，或在目录中但官方未定价。不做推算、不借他国价填充。">—</td>';
+            return;
+          }
           // 参考价不认领"最低国/最高国"（它不是当地官方价，见上方 lo/hi 基准说明）
           if (p.prices[c].is_reference !== 1) {
             if (v === lo) loC = cn(c);

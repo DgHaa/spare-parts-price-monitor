@@ -307,14 +307,29 @@ async def _probe_hosts_for_models(hosts, api, cc, page, path_list, path_price):
     return None, None
 
 
+_DIRTY_MODEL_RE = re.compile(r"^OPPOX\s*Send\s*To\b", re.I)
+
+
+def _is_dirty_catalog_entry(it):
+    """剔除 REBORN 目录里的脏条目。
+
+    实测 getProductInfo 的目录混入两条无意义记录：'OPPOXSend To Os' / 'OPPOXSend To ES'
+    （品类却标为 Mobile phone）。它们不是真实机型，入库后会在比价矩阵显示为幽灵机型。
+    """
+    return bool(_DIRTY_MODEL_RE.search(it.get("marketingModelName") or ""))
+
+
 async def discover_and_price_via_reborn(page, rec, country, max_models=None,
                                         skip_models=None, concurrency=None, stats=None):
     """OPPO api_reborn（新一代 REBORN 备件价接口）：全量机型发现 + **并发**逐机型取价。
 
     与 discover_and_price_via_api 的差别：
       - 只接受 POST（GET 会被网关拒/返回空），故经 executor._page_fetch_post 走浏览器同源 fetch；
-      - 机型主键是 marketingModelCode（非型号名），故先 POST getProduct 拿全量机型表，
+      - 机型主键是 marketingModelCode（非型号名），故先 POST 机型表端点拿全量机型，
         再按码逐个 POST getPartPriceNew，避免"按名字查不到"的错配；
+        机型表端点由 KB 的 api.product_list 指定 —— 2026-09-23 起指向 getProductInfo
+        （**区域产品目录全集**：de 192 台），而非 getProduct（**仅在售精选**：de 10 台）。
+        两者字段名一致，故本函数无需区分；切换后 de 的真实可取价机型由 10 增至 24 台。
       - 一次返回全品类（手机/平板/音频/穿戴/智能显示/笔记本），平板机型不再漏抓
         （这正是 OPPO Pad 5 在旧端点查无数据、平台抓不全的根因）。
     区域 CDN 节点不同（cn→sow-cms / de→par-sow-cms / 亚太→sgp-sow-cms），
@@ -334,7 +349,7 @@ async def discover_and_price_via_reborn(page, rec, country, max_models=None,
       正常情况仍只发 1 个请求、耗时不变；某节点黑洞时回退代价从最坏 ~84s 降到 1.5s。
 
     进度回传 stats（可选 dict，供调用方区分"断点续跑全跳过"与"接口真失败"）：
-        total（getProduct 发现的机型总数）/ skipped（因本季已抓而跳过取价的台数）
+        total（机型表发现的机型总数）/ skipped（因本季已抓而跳过取价的台数）
         / attempted（实际发起取价的台数）/ priced（取到价的台数）
         / errored（请求层失败的台数）/ noprice（请求成功但官方无备件价的台数）
         ——最后两个必须分开：把"官方本就没公布价"当故障，会让每次续跑都误写待修工单。
@@ -350,12 +365,20 @@ async def discover_and_price_via_reborn(page, rec, country, max_models=None,
     if not plist:
         print("  [warn] api_reborn: 所有候选节点均未返回机型列表", flush=True)
         return []
+    # 品类过滤：兼容两种端点口径 —— getProduct 给 categoryName（本地语言品类名，
+    # 各区域字面量不同），getProductInfo 给 productCategoryCode（跨区域稳定，01=手机）。
     cat_filter = api.get("category_filter")
+    cat_codes = api.get("category_filter_by_code")
     if cat_filter:
-        plist = [x for x in plist if (x.get("categoryName") or "") in cat_filter]
-    # 只保留"有名字 + 有 marketingModelCode"的机型（缺码无法按码取价）
+        plist = [x for x in plist
+                 if (x.get("categoryName") or x.get("productCategoryName") or "") in cat_filter]
+    elif cat_codes:
+        plist = [x for x in plist if (x.get("productCategoryCode") or "") in cat_codes]
+    # 只保留"有名字 + 有 marketingModelCode"的机型（缺码无法按码取价），
+    # 并剔除官方目录里的脏条目（见 _is_dirty_catalog_entry）。
     plist = [x for x in plist
-             if x.get("marketingModelName") and x.get("marketingModelCode")]
+             if x.get("marketingModelName") and x.get("marketingModelCode")
+             and not _is_dirty_catalog_entry(x)]
     total = len(plist)
     # 断点续跑前置过滤：本季已抓到价的机型直接不发请求（旧实现只跳过写库，仍全量重发）
     skipped = 0
@@ -1480,16 +1503,24 @@ async def run_all(only_brand=None, only_country=None, concurrency=None, force=Fa
                     await asyncio.wait_for(_closer, timeout=_CLOSE_TIMEOUT)
                 except Exception:
                     pass
-    _apply_reference_fallback(quarter, only_brand, only_country)
+    # CN 参考价回退（_apply_reference_fallback）已**默认停用**（2026-09-23）。
+    # 原因：其前提被证伪 —— 原先认为"这些机型是当地在售机型、只是官方没公布价"，
+    # 实测那 1,123 台全部是旧端点 /cnw/v1/GetPartPrice 污染的机型行（含 186 台一加机型），
+    # 根本不属于这些区域，已由 tools/purge_legacy_oppo_models.py 清退；
+    # 机型表也改由 getProductInfo（区域产品目录全集）定源。
+    # 若将来确要为"在当地产品目录中、但官方未公布价"的机型补参考价，须先用
+    # references/catalog/oppo_<cc>.json 收窄适用面，**切勿**再以"本季无快照"为判据
+    # （那会把"当地根本没有的机型"也算进来）。
     print("[finish] 抓取结束，数据已落 spare_parts.db", flush=True)
 
 
 def _apply_reference_fallback(quarter, only_brand=None, only_country=None):
-    """抓取收尾：给"本季官方没给本地价"的机型补 CN 官方参考价（B 方案，2026-09-23）。
+    """【已停用 · DEPRECATED 2026-09-23】给"本季无价"机型补 CN 官方参考价。
 
-    为什么放在抓取之后：OPPO 各区 getProduct 只返回在售精选机型，已下架老机型每季都会被
-    判为"本地无价"且永不重访。用同一轮已落库的 CN 官方价补"参考价"，矩阵才不会长期空洞。
-    纯 DB 操作（不发网络请求）、幂等、失败只告警——**绝不**影响已完成的抓取结果。
+    ⚠️ 不要再直接调用。其判据（"本季无任何快照的机型"）已被证明会命中**污染机型**：
+    当时那 1,123 台的成因并非"当地机型官方未定价"，而是旧端点 /cnw/v1/GetPartPrice
+    残留的中国市场机型行（含 186 台一加机型），根本不属于这些区域，现已清退。
+    保留函数体仅供将来按**目录收窄**后复用（见下方注释），当前 run_all 已不再调用。
     """
     for brand, regions in CN_REFERENCE_REGIONS.items():
         if only_brand and brand != only_brand:

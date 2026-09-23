@@ -1,8 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""跨区参考价回退（B 方案，2026-09-23）——让"官方本地区无价"的机型持续有可追溯的参考价。
+"""跨区参考价回退 —— 让"在当地产品目录中、但官方未公布备件价"的机型有可追溯的参考价。
 
-== 为什么需要它 ==
+⚠️ 前提修正（2026-09-23）——初版的**适用面判断是错的**，勿再沿用：
+   初版把"本季无任何快照的机型"当作"当地无价机型"。实测那 1,123 台全部是旧端点
+   `/cnw/v1/GetPartPrice` 残留的**中国市场机型行**（含 186 台一加 OnePlus 机型、
+   72 台中国专供版、OPPO 智能电视/手环等中国产品线），根本不属于 de/ae/tr/mx/my/jp
+   任何区域 —— 与真实可抓机型按 (区域 + 归一化名) 比对**重叠为 0**，已全部清退
+   （见 tools/purge_legacy_oppo_models.py）。
+
+   正确的适用面必须从**区域产品目录**取：`references/catalog/oppo_<cc>.json`
+   （由 tools/oppo_catalog.py 抓取的 `/basic/v1/getProductInfo` 结果）。
+   当前 `run_all` 已停用自动调用；如需启用，务必先按目录收窄，**不要**再以
+   "本季无快照"为判据。
+
+   参考：实测 de 目录 192 台中仅 24 台能取到价，其余 168 台 code=1 但
+   partPriceList 为空 —— 这些才是真正意义上的"官方未公布价"。
+
+== 原设计说明（保留供参考） ==
   OPPO 各区域 REBORN `getProduct` 只返回**当前在售**的精选机型（实测 de 仅 10~18 台、
   ae/tr/jp/mx/my 各 26~124 台），已下架老机型在区域官网查无价（实测跨区复用 CN 的
   marketingModelCode 调 `getPartPriceNew` 会被 OPPO 以 `code=10028 "Data does not exist！"`
