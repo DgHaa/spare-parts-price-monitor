@@ -26,6 +26,7 @@ from crawler.reference_prices import (apply_cn_reference, format_stats,  # noqa:
                                       CN_REFERENCE_REGIONS)
 import executor  # 来自 skill scripts（core 已注入 sys.path）  # noqa: E402
 from normalize import parse_amount as _parse_amount  # skill scripts，金额解析唯一实现  # noqa: E402
+from normalize import parse_json_amount as _parse_json_amount  # 接口 JSON 专用  # noqa: E402
 from db import (init_db, upsert_brand, upsert_country, upsert_model,  # noqa: E402
                 upsert_part, insert_snapshot, this_quarter, get_rate, get_rate_meta, fetch_rates,
                 model_already_captured, captured_model_keys, log_run, add_issue,
@@ -192,7 +193,9 @@ async def discover_and_price_via_api(page, rec, country):
             pf = p.get(price_f)
             rows.append({
                 "cells": [nm, (f"{p.get(type_f)} / " if type_f else "") + (p.get(part_f) or ""), str(pf)],
-                "price": _parse_amount(pf) if pf is not None else None,
+                # 来自接口 JSON，用 JSON 语义解析器（`.` 恒为小数点）——该分支虽已停用
+                # （遗留 GetPartPrice），但避免将来重启用时重蹈"3 位小数被当千分位"的覆辙。
+                "price": _parse_json_amount(pf) if pf is not None else None,
                 "model": nm, "part": p.get(part_f),
             })
             out.append((nm, rows, price_url))
@@ -204,6 +207,14 @@ async def discover_and_price_via_api(page, rec, country):
 # 冷热一致），1.5s 会在**正常情况**下误触发对冲、每次白发 2 个请求；3.0s ≈ 2×典型耗时，
 # 既不误触发，又能在黑洞节点上把回退代价从最坏 ~84s 压到 3s。
 _PROBE_HEDGE_S = 3.0   # 首发节点多久没回来就叠加下一个
+# 第 0 个候选（KB 里的**区域专属正主**）单独用更长的宽限期。
+# 为什么必须区分（2026-09-23 实测）：OPPO 各区域的数据按 CDN 节点分布 ——
+#   par-sow-cms（欧洲专属）返回 de 目录 192 台，doc 取价正常；
+#   sow/sgp-sow-cms（全球节点）返回 197 台，但**对 de 取价恒返空**（0/197 台）。
+# 而 par 冷启耗时 4.12s > hedge 3s，会被 0.22s 的 sow 抢先胜出 ——
+# 结果是"机型列表拿到了、整轮 0 台有价"，且日志看起来一切正常（最危险的静默失效）。
+# 正主本来就不该和兜底节点用同一个宽限期。
+_PROBE_FIRST_HEDGE_S = 8.0
 _PROBE_TRIES = 2       # 探测只重试 2 次：有回退，快速失败优先于单点成功率
 _PROBE_TIMEOUT = 10    # 探测单次超时（秒）；取价仍用 executor 默认 4/20
 
@@ -238,6 +249,7 @@ async def _probe_hosts_for_models(hosts, api, cc, page, path_list, path_price):
             return default
 
     hedge = _num("probe_hedge", _PROBE_HEDGE_S, float)
+    first_hedge = _num("probe_first_hedge", _PROBE_FIRST_HEDGE_S, float)
     p_tries = _num("probe_tries", _PROBE_TRIES, int)
     p_to = _num("probe_timeout", _PROBE_TIMEOUT, int)
 
@@ -273,8 +285,10 @@ async def _probe_hosts_for_models(hosts, api, cc, page, path_list, path_price):
         while tasks:
             # 候选已发完就等结果（timeout=None）；还有候选则最多等 hedge 秒。
             # 注意：idx 耗尽时必须用 None，否则 timeout=0 会让本循环空转（忙等）。
+            # idx==1 表示"才发了第 0 个（区域正主）"，此时用更长的 first_hedge。
+            wait_s = None if idx >= len(hosts) else (first_hedge if idx == 1 else hedge)
             done, _ = await asyncio.wait(
-                tasks, timeout=(None if idx >= len(hosts) else hedge),
+                tasks, timeout=wait_s,
                 return_when=asyncio.FIRST_COMPLETED)
             for t in done:
                 tasks.remove(t)
@@ -292,7 +306,7 @@ async def _probe_hosts_for_models(hosts, api, cc, page, path_list, path_price):
                 break
             if idx < len(hosts):
                 if not done:
-                    print(f"  [reborn] {hosts[idx - 1]} {hedge:g}s 内未返回，"
+                    print(f"  [reborn] {hosts[idx - 1]} {wait_s:g}s 内未返回，"
                           f"叠加试打 {hosts[idx]}", flush=True)
                 _spawn()
     finally:
@@ -327,9 +341,12 @@ async def discover_and_price_via_reborn(page, rec, country, max_models=None,
       - 只接受 POST（GET 会被网关拒/返回空），故经 executor._page_fetch_post 走浏览器同源 fetch；
       - 机型主键是 marketingModelCode（非型号名），故先 POST 机型表端点拿全量机型，
         再按码逐个 POST getPartPriceNew，避免"按名字查不到"的错配；
-        机型表端点由 KB 的 api.product_list 指定 —— 2026-09-23 起指向 getProductInfo
+        机型表端点由 KB 的 api.product_list 指定 —— 2026-09-23 起主端点指向 getProductInfo
         （**区域产品目录全集**：de 192 台），而非 getProduct（**仅在售精选**：de 10 台）。
         两者字段名一致，故本函数无需区分；切换后 de 的真实可取价机型由 10 增至 24 台。
+        **但两者集合互不包含**：getProduct 另有 26 台（非CN）+ 204 台（cn，含 OPPO
+        智能电视与一加/realme/真我等集团子品牌）机型是 getProductInfo 没有的，
+        故 KB 可配 api.product_lists 指定多个端点，本函数按下文逻辑取并集。
       - 一次返回全品类（手机/平板/音频/穿戴/智能显示/笔记本），平板机型不再漏抓
         （这正是 OPPO Pad 5 在旧端点查无数据、平台抓不全的根因）。
     区域 CDN 节点不同（cn→sow-cms / de→par-sow-cms / 亚太→sgp-sow-cms），
@@ -365,6 +382,35 @@ async def discover_and_price_via_reborn(page, rec, country, max_models=None,
     if not plist:
         print("  [warn] api_reborn: 所有候选节点均未返回机型列表", flush=True)
         return []
+    # 端点并集（2026-09-23 修正）：getProductInfo（区域产品目录全集）与
+    # getProduct（在售精选）的机型集合**互不包含** —— 实测七个区域都有
+    # "仅 getProduct 有"的机型：cn 204 台（OPPO 智能电视 K9、一加/realme/真我
+    # ——OPPO 集团子品牌，其在华售后已并入 OPPO）、ae 13 台、mx 9 台
+    # （含主力机 Reno13 5G / Reno13 F 5G）、my 2 台、de/jp 各 1 台。
+    # 原先只认单端点（2026-09-23 切到 getProductInfo）会让这批机型整季缺席，
+    # 且**旧快照不会被刷新**（这正是 labor_fee 修复后 cn 仍残留 1,621 行的原因）。
+    # 故凡 KB 配了 product_lists 的区域，逐个补齐并按 marketingModelCode 去重合并。
+    extra_paths = [p for p in (api.get("product_lists") or []) if p and p != path_list]
+    if extra_paths:
+        have = {x.get("marketingModelCode") for x in plist}
+        for ep in extra_paths:
+            # 附带端点同样走节点对冲：实测不同端点在各 CDN 节点上的可用性不一致
+            # （de 的 getProduct 在 sow-cms 返回 0 台、在 par-sow-cms 正常），
+            # 直接复用主端点的命中节点会静默漏数据。
+            arr, ep_host = await _probe_hosts_for_models(
+                hosts, api, cc, page, ep, path_price)
+            if not arr:
+                print(f"  [warn] 附带端点 {ep}: 所有候选节点均未返回机型（跳过）", flush=True)
+                continue
+            if isinstance(arr, dict):  # 保险：个别节点可能返回 {productList:[...]}
+                arr = arr.get("productList") or arr.get("list") or []
+            new = [x for x in arr
+                   if x.get("marketingModelCode") and x.get("marketingModelCode") not in have]
+            for x in new:
+                have.add(x.get("marketingModelCode"))
+            plist += new
+            print(f"  [reborn] 附带端点 {ep}（{ep_host}）：{len(arr)} 台，"
+                  f"补入 {len(new)} 台新机型", flush=True)
     # 品类过滤：兼容两种端点口径 —— getProduct 给 categoryName（本地语言品类名，
     # 各区域字面量不同），getProductInfo 给 productCategoryCode（跨区域稳定，01=手机）。
     cat_filter = api.get("category_filter")

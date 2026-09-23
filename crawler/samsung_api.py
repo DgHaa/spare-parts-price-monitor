@@ -51,7 +51,8 @@ if str(SKILL_SCRIPTS) not in sys.path:
 _VENDOR = Path(__file__).resolve().parents[1] / "vendor"  # 仓库内副本优先
 if _VENDOR.exists() and str(_VENDOR) not in sys.path:
     sys.path.insert(0, str(_VENDOR))
-from normalize import parse_amount as _parse_amount  # noqa: E402
+from normalize import parse_amount as _parse_amount  # noqa: E402  # 仅用于「本地化文本」金额
+from normalize import parse_json_amount as _parse_json_amount  # noqa: E402
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
       "Accept": "application/json"}
 
@@ -232,6 +233,10 @@ def fetch_de(rec):
                         if (spec.get("name") or "").lower() == "preis":
                             v = spec.get("value")
                             if v not in (None, ""):
+                                # 这里**故意**用 parse_amount 而非 parse_json_amount：
+                                # value 是德国本地化的文本金额（千分位写 `.`，实测如
+                                # '245'/'129'，若出现 '1.234' 意为 1234 欧）。JSON 语义
+                                # 解析器会把 '1.234' 读成 1.234 —— 差 1000 倍。
                                 price = _parse_amount(v)
                             break
                     if price is None or price <= 0:
@@ -328,6 +333,8 @@ def _ae_price(s):
     m = re.search(r"AED\s*([\d,]+(?:\.\d+)?)", s)
     if not m:
         return None
+    # 来源是网页文本（含 'AED ' 前缀），保持 parse_amount 的语区推断；
+    # 若写成 'AED 1.845'（阿联酋用 `.` 作千分位）也能正确读成 1845。
     return _parse_amount(m.group(1))
 
 
@@ -679,7 +686,9 @@ def fetch_cn(rec):
                 if not items:
                     continue
                 it = items[0]  # 同类目取首个（主件）为代表
-                price = _parse_amount(str(it.get("PART_PRICE")))
+                # PART_PRICE 是接口 JSON 里的**标准数值字符串**（实测 '2380.0'/'922.13'，
+                # `.` 恒为小数点），用 JSON 语义解析器，避免将来出现 3 位小数时被误判。
+                price = _parse_json_amount(it.get("PART_PRICE"))
                 if not price or price <= 0:
                     continue
                 rows.append({"part": cat_map.get(pname, pname), "price": price})

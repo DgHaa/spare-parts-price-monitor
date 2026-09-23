@@ -59,7 +59,12 @@ def parse_amount(s):
       3. 无分隔符 → 直读。
 
     已知取舍：形如 `1,234` 若真表示 1.234（三位小数价）会被读成 1234。
-    实测语料中不存在这种写法。
+    网页文本里实测不存在这种写法；但**接口 JSON 里恰恰存在**（OPPO REBORN 的
+    laborCostAmount 恒为 3 位小数，如 MYR "50.000"）—— 结构化 JSON 请改用
+    parse_json_amount()。本函数只用于从**网页可见文本**里抠金额。
+
+    ⚠️ 2026-09-23 事故：OPPO 各区域人工费用本函数解析，"50.000" 被读成 50000，
+    全区域人工费放大 1000 倍（见 parse_json_amount 的说明）。
     """
     if s is None:
         return None
@@ -85,6 +90,40 @@ def parse_amount(s):
             num = num.replace(sep, "") if len(tail) == 3 else f"{head}.{tail}"
     try:
         return float(num)
+    except ValueError:
+        return None
+
+
+def parse_json_amount(v):
+    """解析**结构化 JSON** 里的金额字段（如 OPPO REBORN 的 "50.000" / "4499.00"）。
+
+    与 parse_amount 的分工（切勿混用）：
+      parse_amount      —— 面向**网页可见文本**。`1.234,56` 与 `1,234.56` 都合法，
+                           需按语区推断谁是小数点，故带"单个分隔符且尾 3 位 = 千分位"
+                           的启发式（`8.200` → 8200）。
+      parse_json_amount —— 面向**接口 JSON**。JSON 数值语法规定小数点只能是 `.`，
+                           逗号只可能是千分位，故无需任何推断：`,` 一律删除，
+                           `.` 一律作小数点。
+
+    为什么必须分开：OPPO REBORN 的 laborCostAmount 是**固定 3 位小数**的字符串
+    （MYR "50.000"、TRY "1350.000"），交给 parse_amount 会被"尾 3 位 = 千分位"
+    误判，人工费整体放大 1000 倍（2026-09-23 实测并修复）。
+
+    与 _amount_or_none 的分工：那个是"直读 float + 丢掉 <=0"，用于小米/vivo 的
+    单值字段；本函数保留 0、并容忍千分位与货币符号噪声，返回 None 表示无法解析。
+    """
+    if v is None:
+        return None
+    if isinstance(v, (int, float)):
+        return float(v)
+    s = str(v).strip()
+    if not s:
+        return None
+    m = re.search(r"\d[\d.,]*", s)
+    if not m:
+        return None
+    try:
+        return float(m.group(0).rstrip(".,").replace(",", ""))
     except ValueError:
         return None
 

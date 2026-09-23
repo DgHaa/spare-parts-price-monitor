@@ -592,7 +592,7 @@
       Object.values(p.prices || {}).some(pc => pc.has_labor_split === 1)));
     html += '<div class="hint">同一机型按 <b>(规格, 颜色, 版本)</b> 分组，每组<b>独立</b>跨国比价，<b>不混算</b>不同规格/颜色/版本。上方 chips 可只留单一规格/颜色；下方每组一张表。点击 🔗 可查看官方来源页。</div>';
     let leg = '<div class="hint warn">';
-    if (hasSplit) leg += '🔧 <b>人工费</b>=官网明确单列的人工费金额（如小米《保外人工指导价》），悬停看官网原文说明、🔗证 跳取证页；';
+    if (hasSplit) leg += '🔧 <b>人工费</b>=官网明确单列的人工费金额（<b>当地货币</b>计价，如小米《保外人工指导价》为 CNY），悬停看官网原文说明、🔗证 跳取证页；';
     if (hasNoSplit) leg += '※ = 官网<b>仅给总价、未单列人工费</b>（平台显式标注，绝不编造）；';
     leg += '本平台<b>无种子/占位数据</b>：所有价格均来自官方页真实抓取；单元格 tooltip 含汇率来源与时点。</div>';
     html += leg;
@@ -673,7 +673,7 @@
           let laborBadge = "", laborTip = "";
           if (pc.has_labor_split === 1) {
             const ln = (pc.labor_note || "官网单列人工费");
-            laborBadge = ` <span class="lb labor-ok" title="${esc(ln)}">🔧人工费¥${fmt(pc.labor_fee)}</span>`;
+            laborBadge = ` <span class="lb labor-ok" title="${esc(ln)}">🔧人工费 ${fmt(pc.labor_fee)} ${esc(cur)}</span>`;
             laborTip = " · " + ln;
             if (pc.labor_source_url)
               laborBadge += ` <a class="srclink" href="${esc(pc.labor_source_url)}" target="_blank" rel="noopener" title="人工费取证来源页" onclick="event.stopPropagation()">🔗证</a>`;
@@ -682,7 +682,9 @@
           }
           let tip = `${esc(cn(c))} 原币 ${raw} ${cur}（规格 ${esc(pc.spec || "—")} / 颜色 ${esc(pc.color || "—")}${pc.edition ? " / 版本 " + esc(pc.edition) : ""}）`;
           if (pc.material_fee != null || pc.labor_fee != null)
-            tip += ` · 物料¥${fmt(pc.material_fee)} 人工¥${fmt(pc.labor_fee)}`;
+            // 物料/人工费存的是**原币**金额（与上面的 raw 同币种），不是 CNY ——
+            // 历史 bug：这里标成 ¥，把 MYR 339 读成"339 元人民币"。
+            tip += ` · 物料 ${fmt(pc.material_fee)} / 人工 ${fmt(pc.labor_fee)} ${esc(cur)}`;
           else
             tip += ` · 官方未提供物料/人工拆分（仅总价）`;
           tip += laborTip;
@@ -743,7 +745,8 @@
       if (!pc) return `<tr><td>${esc(p.cat)}</td><td>${esc(p.part)}</td><td colspan="6" class="muted">该国无价</td></tr>`;
       let labor;
       if (pc.has_labor_split === 1)
-        labor = `🔧人工费¥${fmt(pc.labor_fee)}（物料¥${fmt(pc.material_fee)}）`;
+        // 物料/人工是**原币**金额（同「原币」列币种），不能标 ¥（那是 CNY 折算列）
+        labor = `🔧人工费 ${fmt(pc.labor_fee)}（物料 ${fmt(pc.material_fee)}）${esc(pc.currency)}`;
       else
         labor = "官方未单列（仅总价）";
       const srcLink = modelLinkHTML(pc, { showModel: true });
@@ -1105,7 +1108,7 @@
       f.forEach(r => {
         let labor;
         if (r.has_labor_split === 1)
-          labor = `<span class="lb labor-ok" title="${esc(r.labor_note || "")}">🔧 ¥${fmt(r.labor_fee)}</span>` +
+          labor = `<span class="lb labor-ok" title="${esc(r.labor_note || "")}">🔧 ${fmt(r.labor_fee)} ${esc(r.currency)}</span>` +
             (r.labor_source_url ? ` <a class="srclink" href="${esc(r.labor_source_url)}" target="_blank" rel="noopener" title="人工费取证页">🔗证</a>` : "");
         else
           labor = '<span class="muted" title="' + esc(r.labor_note || "官网未单列人工费") + '">未单列</span>';

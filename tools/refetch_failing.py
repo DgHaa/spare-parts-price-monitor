@@ -29,6 +29,7 @@ _VENDOR = ROOT / "vendor"  # 仓库内副本优先
 if _VENDOR.exists() and str(_VENDOR) not in sys.path:
     sys.path.insert(0, str(_VENDOR))
 from normalize import parse_amount as _parse_amount  # noqa: E402
+from normalize import parse_json_amount as _parse_json_amount  # noqa: E402
 
 MI_CLASS_LIST = "https://api2.service.order.mi.com/repair_price/shop_class_info?keyword=&callback=CALLBACK"
 MI_PRICE = "https://api2.service.order.mi.com/repair_price/shop_band_wx_price?class_id={cid}&callback=cb"
@@ -96,7 +97,9 @@ def vivo_api(mid, cc):
                 m = re.search(r"-?\d[\d.,]*\.?\d*", str(raw))   # 价格可能带币种后缀，如 "1390TRY"
                 if not m:
                     continue
-                val = _parse_amount(m.group(0))
+                # 来自接口 JSON（vivo 用 `.` 作小数点、`,` 作千分位），
+                # 不能用需要语区推断的 parse_amount。
+                val = _parse_json_amount(m.group(0))
                 if val is None:
                     continue
                 out.append((p.get("name"), val))

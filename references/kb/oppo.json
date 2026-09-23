@@ -29,6 +29,10 @@
               "sow-cms.oppo.com"
             ],
             "product_list": "/basic/v1/getProductInfo",
+            "product_lists": [
+              "/basic/v1/getProductInfo",
+              "/basic/v1/getProduct"
+            ],
             "price_detail": "/basic/v1/getPartPriceNew",
             "region": "CN",
             "region_iso": "cn",
@@ -98,6 +102,10 @@
               "sgp-sow-cms.oppo.com"
             ],
             "product_list": "/basic/v1/getProductInfo",
+            "product_lists": [
+              "/basic/v1/getProductInfo",
+              "/basic/v1/getProduct"
+            ],
             "price_detail": "/basic/v1/getPartPriceNew",
             "region": "DE",
             "region_iso": "de",
@@ -167,6 +175,10 @@
               "par-sow-cms.oppo.com"
             ],
             "product_list": "/basic/v1/getProductInfo",
+            "product_lists": [
+              "/basic/v1/getProductInfo",
+              "/basic/v1/getProduct"
+            ],
             "price_detail": "/basic/v1/getPartPriceNew",
             "region": "TR",
             "region_iso": "tr",
@@ -236,6 +248,10 @@
               "par-sow-cms.oppo.com"
             ],
             "product_list": "/basic/v1/getProductInfo",
+            "product_lists": [
+              "/basic/v1/getProductInfo",
+              "/basic/v1/getProduct"
+            ],
             "price_detail": "/basic/v1/getPartPriceNew",
             "region": "MX",
             "region_iso": "mx",
@@ -305,6 +321,10 @@
               "par-sow-cms.oppo.com"
             ],
             "product_list": "/basic/v1/getProductInfo",
+            "product_lists": [
+              "/basic/v1/getProductInfo",
+              "/basic/v1/getProduct"
+            ],
             "price_detail": "/basic/v1/getPartPriceNew",
             "region": "MY",
             "region_iso": "my",
@@ -374,6 +394,10 @@
               "par-sow-cms.oppo.com"
             ],
             "product_list": "/basic/v1/getProductInfo",
+            "product_lists": [
+              "/basic/v1/getProductInfo",
+              "/basic/v1/getProduct"
+            ],
             "price_detail": "/basic/v1/getPartPriceNew",
             "region": "JP",
             "region_iso": "jp",
@@ -443,6 +467,10 @@
               "par-sow-cms.oppo.com"
             ],
             "product_list": "/basic/v1/getProductInfo",
+            "product_lists": [
+              "/basic/v1/getProductInfo",
+              "/basic/v1/getProduct"
+            ],
             "price_detail": "/basic/v1/getPartPriceNew",
             "region": "AE",
             "region_iso": "ae",

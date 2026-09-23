@@ -33,6 +33,7 @@ GOOGLE_LOCS = KB_DIR / "google_locators.json"
 # `replace(",", "")` 导致德语小数逗号被吃掉、价格放大 100 倍。
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from normalize import parse_amount as _parse_amount  # noqa: E402
+from normalize import parse_json_amount as _parse_json_amount  # noqa: E402
 
 
 def load_record(brand, country, category="phone"):
@@ -969,8 +970,13 @@ def flatten_reborn_parts(groups):
             eff = retail if retail is not None else disc
             labor = c.get("laborCostAmount")
             cur = c.get("retailPriceCurrency") or ""
+
             def _num(v):
-                return _parse_amount(v)
+                # 必须是 JSON 语义解析器：laborCostAmount 恒为 3 位小数（"50.000"），
+                # 用面向网页文本的 parse_amount 会被"尾 3 位=千分位"读成 50000
+                # （2026-09-23 实测事故：OPPO 全区域人工费放大 1000 倍）。
+                return _parse_json_amount(v)
+
             rows.append({
                 "cells": [None, (f"{gname} / " if gname and gname != part else "") + (part or ""),
                           str(eff)],
@@ -1325,7 +1331,10 @@ async def run_query(page, query, model, part, country="de"):
                 "cells": [mdl,
                           (f"{x.get(type_f)} / " if type_f else "") + (x.get(part_f) or ""),
                           str(pf)],
-                "price": _parse_amount(pf) if pf is not None else None,
+                # 同样来自接口 JSON（非网页文本），用 JSON 语义解析器：
+                # 该模式虽已停用（遗留 GetPartPrice），但避免将来重启用时重蹈
+                # "3 位小数被当千分位"的覆辙。
+                "price": _parse_json_amount(pf) if pf is not None else None,
                 "model": mdl, "part": x.get(part_f), "raw": x,
             })
         return rows

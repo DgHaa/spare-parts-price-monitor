@@ -10,7 +10,10 @@
   2) **无幽灵机型**：不得出现「一加/OnePlus」「智能电视」「手环」「兰博基尼」等
      不属于这些区域的机型名；
   3) **参考价已清零**：不得出现 .ref-cell / sup.ref（CN 参考价方案的前提已被证伪并停用）；
-  4) 单元格小字不得出现「参考·中国」。
+  4) 单元格小字不得出现「参考·中国」；
+  5) **明细弹窗**可打开，且物料/人工费按**当地货币**标注（不得标成 ¥）——
+     2026-09-23 的「人工费¥50,000」正是在这里被用户发现的；
+  6) DB 层人工费量级正常（各币种均未超上限）——防「×1000」类解析事故回退。
 
 前置：后端已启动 python api/server.py (127.0.0.1:8000)。
 用法：python tools/verify_oppo_matrix.py [--brand oppo] [--model "OPPO Reno14"]
@@ -45,6 +48,44 @@ def db_legacy_residue():
                        AND m.source_url LIKE '%/cnw/v1/GetPartPrice%'""").fetchone()[0]
     c.close()
     return n
+
+
+# 人工费量级上限（**当地货币**，不是 CNY）。依据 2026-09-23 修复后 OPPO 的实测值域
+# （CNY 50 / MYR 50 / AED 40~80 / MXN 240~650 / TRY 1350）留足余量。
+# 该阈值能可靠抓出被"×1000"污染的旧数据（MYR 50000 / AED 40000 /
+# MXN 650000 / TRY 1350000 / CNY 50000），又不误伤真实的高人工费定价。
+LABOR_CAP = {"CNY": 2000, "MYR": 1000, "AED": 1000, "MXN": 8000, "TRY": 20000}
+
+
+def db_labor_fee_anomalies(brand="oppo"):
+    """DB 层：人工费量级异常的备件行（防 2026-09-23 那类"×1000"事故回退）。
+
+    事故回顾：OPPO REBORN 的 laborCostAmount 是固定 3 位小数的 JSON 字符串
+    （实测 "50.000"），被交给面向**网页文本**的 parse_amount 后，其
+    "单个分隔符且尾 3 位 = 千分位"启发式把 50.000 读成 50000 ——
+    my/cn/ae/mx/tr 全区域人工费放大 1000 倍。修复为 parse_json_amount
+    （`vendor/normalize.py`，回归测试见 tools/test_amount_parse.py）。
+
+    为什么按币种设阈值而非"统一上限"：labor_fee 存的是**原币**金额，
+    TRY 的量级天然比 CNY 高两个数量级，一刀切必然误报。
+    """
+    import sqlite3
+    c = sqlite3.connect(str(ROOT / "spare_parts.db"))
+    rows = c.execute("""SELECT m.country_code cc, ps.currency cur, ps.labor_fee lf,
+                               COUNT(*) n
+        FROM price_snapshots ps
+        JOIN parts p ON p.id=ps.part_id
+        JOIN models m ON m.id=p.model_id
+        JOIN brands b ON b.id=m.brand_id
+        WHERE b.name=? AND ps.labor_fee IS NOT NULL AND ps.labor_fee > 0
+        GROUP BY cc, cur, lf ORDER BY ps.labor_fee DESC""", (brand,)).fetchall()
+    c.close()
+    bad = []
+    for cc, cur, lf, n in rows:
+        cap = LABOR_CAP.get(cur)
+        if cap and lf > cap:
+            bad.append(f"{cc}/{cur} 人工费 {lf:g}（上限 {cap}，{n} 行）")
+    return bad
 
 
 def kb_unavailable(brand):
@@ -103,6 +144,9 @@ def _assert(info, fails, expect_no_src=0):
     residue = db_legacy_residue()
     if residue:
         fails.append(f"旧端点污染机型残留 {residue} 台（应为 0）")
+    labor_bad = db_labor_fee_anomalies()
+    if labor_bad:
+        fails.append("人工费量级异常（疑似再被解析放大）：" + "；".join(labor_bad[:4]))
     # 有"官方不提供备件价"的区域时，必须把原因写在页面上 ——
     # 否则用户会把空白列误读成"抓取失败"（这正是 2026-09-23 体检要澄清的）
     if expect_no_src and not info.get("unavailableNoteRendered"):
@@ -117,6 +161,15 @@ def _assert(info, fails, expect_no_src=0):
             fails.append(f"以下区域的说明为空（界面只剩无理由的空白横幅）: {blank}")
     if info.get("refCellCount", 0) != 0:
         fails.append(f"参考价单元格应为 0（方案已停用），实际 {info['refCellCount']}")
+    # 明细弹窗必须能打开，且物料/人工费按**当地货币**标注（那是原币金额，
+    # 与同列的「CNY 折算」不是一回事）——2026-09-23 的「人工费¥50,000」即此处标错。
+    if not info.get("detailOpened"):
+        fails.append(f"点击价格单元格未弹出明细弹窗（{str(info.get('detailText'))[:80]}）")
+    else:
+        dt = info.get("detailText") or ""
+        for bad in ("人工费¥", "物料¥", "人工¥"):
+            if bad in dt:
+                fails.append(f"明细弹窗把原币金额标成人民币符号：出现「{bad}」")
     if info.get("refBadgeCount", 0) != 0:
         fails.append(f"参考价徽标应为 0，实际 {info['refBadgeCount']}")
     if info.get("hasRefText"):
@@ -131,7 +184,8 @@ def _assert(info, fails, expect_no_src=0):
         return 1
     extra = "；已渲染『官方不提供备件价』区域说明" if expect_no_src else ""
     print(f"\n[PASS] 矩阵渲染正常（{info['cellCount']} 个价格单元格）；"
-          f"旧端点污染机型残留 0 台；参考价单元格/徽标 0 个{extra}")
+          f"旧端点污染机型残留 0 台；参考价单元格/徽标 0 个；"
+          f"人工费量级正常（各币种均未超上限）；明细弹窗币种标注正确{extra}")
     return 0
 
 
@@ -183,11 +237,25 @@ def main():
         }""")
         if a.shot:
             pg.screenshot(path=a.shot)
+        # 明细弹窗 —— 用户实际盯着看的那一屏（2026-09-23 的「人工费¥50,000」就是在这里
+        # 被发现的）。点开第一个价格单元格，检查物料/人工是否按**当地货币**标注。
+        print("[4/5] 打开明细弹窗…", flush=True)
+        try:
+            pg.click("td.cell-click", timeout=8000)
+            pg.wait_for_selector(".modal", timeout=8000)
+            pg.wait_for_timeout(600)
+            info.update(pg.evaluate("""() => {
+                const m = document.querySelector('.modal');
+                return {detailOpened: !!m, detailText: m ? (m.innerText || '').slice(0, 2000) : ''};
+            }"""))
+        except Exception as e:  # noqa: BLE001
+            info.update(detailOpened=False,
+                        detailText=f"{type(e).__name__}: {str(e)[:90]}")
         # 先落结果再关浏览器：本机残留 chrome-headless-shell 会让 b.close() 长时间阻塞，
         # 若把结果打印放在 close 之后，断言结果将永远刷不出来。
         print("结果:", info, flush=True)
         Path(a.result_log).write_text(repr(info), encoding="utf-8")
-        print("[4/5] 关闭浏览器…", flush=True)
+        print("[5/5] 关闭浏览器…", flush=True)
         try:
             b.close()
         except Exception as e:
