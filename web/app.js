@@ -99,6 +99,12 @@
     return html;
   }
   function brandCaveat(b) { const x = (state.brands || []).find(r => r.name === b); return (x && x.price_caveat) || ""; }
+  // 该品牌「官方不提供备件价」的区域（KB recipe status = unavailable/unverified）。
+  // 用于把空白列的原因说清楚——是官方无此数据，不是抓取失败。
+  function brandUnavailable(b) {
+    const x = (state.brands || []).find(r => r.name === b);
+    return (x && x.source_unavailable) || [];
+  }
   function statusBadge(st) {
     if (st === "success") return '<span class="badge green">正常</span>';
     if (st === "failed") return '<span class="badge red">抓取失败</span>';
@@ -593,6 +599,14 @@
     const cav = brandCaveat(d.brand);
     if (cav)
       html += '<div class="hint warn">⚠️ ' + esc(cav) + '</div>';
+    // 「官方不提供备件价」的区域说明：这些列留白是官方无此数据，不是抓取失败。
+    // 判据来自 KB 的 recipe status（unavailable/unverified），非前台臆测。
+    const noSrc = brandUnavailable(d.brand);
+    if (noSrc.length)
+      html += '<div class="hint">ℹ️ <b>' + esc(d.brand) + '</b> 在以下区域<b>官方不提供</b>备件价询价：'
+        + noSrc.map(x => esc(cn(x.country)) + '（'
+            + (x.status === "unverified" ? "尚未验证有无官方价源" : "官方未提供") + '）').join('、')
+        + '。这些列留白是<b>官方无此数据</b>，不是抓取失败。</div>';
     // 参考价（B 方案）说明——只在真的出现参考价时展示，避免无谓噪音
     const hasRef = (d.groups || []).some(g => (g.parts || []).some(p =>
       Object.values(p.prices || {}).some(pc => pc.is_reference === 1)));

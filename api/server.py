@@ -61,10 +61,43 @@ def api_countries():
     return out
 
 
+def _kb_region_status(brand):
+    """从 KB 读出该品牌「官方不提供备件价」的区域，供前端如实标注。
+
+    为什么要暴露：这些区域是官方**没有**数据（如小米备件价接口仅中国可用、
+    Apple 未提供土耳其语维修价页），抓取会如实跳过、不写任何行。
+    若不说明，用户看到空白列会把"官方无此数据"误读成"我们抓取失败" ——
+    二者必须区分（2026-09-23 全品牌体检时确认：35 个 brand×country 组合中，
+    10 个缺失组合**全部**是这种已知无源，没有一个是抓取故障）。
+    """
+    p = ROOT / "references" / "kb" / f"{brand}.json"
+    if not p.exists():
+        return []
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    out = []
+    for cc, arr in (d.get("countries") or {}).items():
+        for rec in (arr or []):
+            st = rec.get("status") or rec.get("query", {}).get("status")
+            if st in ("unavailable", "unverified"):
+                # 说明文字在 KB 里有三个可能的层级，逐个回退（实测各品牌不一：
+                # apple 在 recipe 级，xiaomi 在 query.api 级）。
+                note = (rec.get("note")
+                        or rec.get("query", {}).get("note")
+                        or rec.get("query", {}).get("api", {}).get("note") or "")
+                out.append({"country": cc, "status": st, "note": note[:240]})
+                break
+    return out
+
+
 def api_brands():
     c = conn()
     out = rows_to_dict(c.execute("SELECT id,name,recipe_mode,price_caveat FROM brands ORDER BY name"))
     c.close()
+    for b in out:
+        b["source_unavailable"] = _kb_region_status(b["name"])
     return out
 
 

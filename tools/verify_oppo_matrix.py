@@ -47,12 +47,36 @@ def db_legacy_residue():
     return n
 
 
-def _assert(info, fails):
+def kb_unavailable(brand):
+    """该品牌「官方不提供备件价」的区域（KB recipe status = unavailable/unverified）。"""
+    import json
+    p = ROOT / "references" / "kb" / f"{brand}.json"
+    if not p.exists():
+        return []
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    out = []
+    for cc, arr in (d.get("countries") or {}).items():
+        for rec in (arr or []):
+            if (rec.get("status") or rec.get("query", {}).get("status")) in ("unavailable", "unverified"):
+                out.append(cc)
+                break
+    return out
+
+
+def _assert(info, fails, expect_no_src=0):
     if not info.get("tableRendered"):
         fails.append("比价矩阵未渲染（.heat 表格缺失）")
     residue = db_legacy_residue()
     if residue:
         fails.append(f"旧端点污染机型残留 {residue} 台（应为 0）")
+    # 有"官方不提供备件价"的区域时，必须把原因写在页面上 ——
+    # 否则用户会把空白列误读成"抓取失败"（这正是 2026-09-23 体检要澄清的）
+    if expect_no_src and not info.get("unavailableNoteRendered"):
+        fails.append(f"该品牌有 {expect_no_src} 个『官方不提供备件价』的区域，"
+                     f"但页面未渲染说明横幅")
     if info.get("refCellCount", 0) != 0:
         fails.append(f"参考价单元格应为 0（方案已停用），实际 {info['refCellCount']}")
     if info.get("refBadgeCount", 0) != 0:
@@ -67,8 +91,9 @@ def _assert(info, fails):
         for f in fails:
             print("  -", f)
         return 1
+    extra = "；已渲染『官方不提供备件价』区域说明" if expect_no_src else ""
     print(f"\n[PASS] 矩阵渲染正常（{info['cellCount']} 个价格单元格）；"
-          f"旧端点污染机型残留 0 台；参考价单元格/徽标 0 个")
+          f"旧端点污染机型残留 0 台；参考价单元格/徽标 0 个{extra}")
     return 0
 
 
@@ -102,12 +127,14 @@ def main():
         info = pg.evaluate("""() => {
             const tables = [...document.querySelectorAll('table.heat')];
             const body = document.body.innerText || '';
+            const hints = [...document.querySelectorAll('.hint')].map(e => e.innerText || '').join(' ');
             return {
                 tableRendered: tables.length > 0,
                 cellCount: document.querySelectorAll('td.cell-click, td.muted').length,
                 refCellCount: document.querySelectorAll('td.ref-cell').length,
                 refBadgeCount: document.querySelectorAll('sup.ref').length,
                 hasRefText: body.includes('参考·中国'),
+                unavailableNoteRendered: hints.includes('官方不提供') && hints.includes('不是抓取失败'),
             };
         }""")
         if a.shot:
@@ -122,7 +149,7 @@ def main():
         except Exception as e:
             print(f"  (浏览器关闭异常，忽略): {e}", flush=True)
 
-    return _assert(info, fails)
+    return _assert(info, fails, expect_no_src=len(kb_unavailable(a.brand)))
 
 
 if __name__ == "__main__":
