@@ -9,6 +9,9 @@ backups/
 # === 密钥 / token ===
 .crawl_token
 output/.crawl_token
+# 异动推送真实配置：含企微 webhook key 与 SMTP 密码，**绝不可入仓**
+# （模板见 config.push.json.example）
+config.push.json
 
 # === 日志 ===
 *.log

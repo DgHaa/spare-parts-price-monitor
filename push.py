@@ -7,9 +7,12 @@
 {
   "enabled": false,
   "alert_threshold": 0.15,
-  "wechat": {"webhook_url": ""},
+  "wechat": {"webhook_url": "", "proxy_mode": "auto"},
   "email":  {"smtp_host":"","smtp_port":465,"smtp_user":"","smtp_pass":"","to":[""]}
 }
+  wechat.proxy_mode：auto（默认，先直连、失败回退环境代理）/ direct / proxy。
+  为何需要它：本机 http_proxy 是给爬虫访海外站用的，而 urllib 会隐式继承，
+  会把企微告警绕道爬虫出口（2026-09-23 实测，详见 send_wechat）。
 也可用环境变量覆盖：
   SPM_WECHAT_WEBHOOK / SPM_SMTP_HOST / SPM_SMTP_PORT / SPM_SMTP_USER / SPM_SMTP_PASS / SPM_EMAIL_TO
 
@@ -27,7 +30,7 @@ import sys
 from datetime import datetime
 from email.mime.text import MIMEText
 from pathlib import Path
-from urllib.request import Request, urlopen
+from urllib.request import ProxyHandler, Request, build_opener, urlopen  # noqa: F401
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from db import get_conn, this_quarter  # noqa: E402
@@ -121,24 +124,54 @@ def format_wechat(quarter, prev, alerts, threshold):
     return "\n".join(lines)
 
 
-def format_email(quarter, prev, alerts):
+def format_email(quarter, prev, alerts, threshold=0.15):
+    """邮件文案。阈值必须**参数化**——原实现把 ±15% 硬编码进标题与正文，
+    改 --threshold 后邮件会继续说 15%（微信侧是对的，两边口径不一致会误导读者）。"""
+    tp = int(threshold * 100)
     if not alerts:
         return (f"备件价中台 {quarter} 季度异动报告",
-                f"{quarter} 季度无显著备件价异动（阈值 ±15%）。")
+                f"{quarter} 季度无显著备件价异动（阈值 ±{tp}%）。")
     body = [f"备件价中台 {quarter} 季度异动报告（对比 {prev}）",
-            f"共 {len(alerts)} 条异动（阈值 ±15%）：\n"]
+            f"共 {len(alerts)} 条异动（阈值 ±{tp}%）：\n"]
     for a in alerts:
         body.append(f"{'↑' if a['pct'] > 0 else '↓'} {a['brand']} {a['model']} [{a['country']}] {a['cat']}: "
                     f"{a['prev']}→{a['cur']} CNY ({a['pct']:+}%)")
     return (f"备件价中台 {quarter} 异动（{len(alerts)}条）", "\n".join(body))
 
 
-def send_wechat(webhook, content):
-    req = Request(webhook,
-                  data=json.dumps({"msgtype": "markdown", "markdown": {"content": content}}).encode("utf-8"),
-                  headers={"Content-Type": "application/json"})
-    with urlopen(req, timeout=10) as r:
-        return r.read().decode("utf-8")
+def send_wechat(webhook, content, proxy_mode="auto"):
+    """POST 到企微 webhook。
+
+    ⚠️ 代理陷阱（2026-09-23 实测发现）：本机为爬虫访问海外品牌站设置了
+    http_proxy / https_proxy（见 crawler.core.get_proxy），而 urllib 的 urlopen
+    会**隐式**读取这些环境变量——于是企微告警被悄悄绕道爬虫出口节点。
+    证据：把 webhook 指向一个未监听端口，回来的是代理的
+    `HTTP Error 502 Bad Gateway` 而不是"连接被拒"，说明请求确实经过了代理。
+
+    告警链路不该依赖爬虫代理的可用性（代理重启/限流会静默吞掉告警），故默认
+    **直连**；直连失败时自动回退走代理并打印说明，兼容"必须走代理才能出网"的环境。
+
+    proxy_mode: "auto"（默认：先直连，失败回退代理）| "direct" | "proxy"
+    """
+    payload = json.dumps({"msgtype": "markdown",
+                          "markdown": {"content": content}}).encode("utf-8")
+    headers = {"Content-Type": "application/json"}
+
+    def _post(use_proxy):
+        opener = build_opener() if use_proxy else build_opener(ProxyHandler({}))
+        req = Request(webhook, data=payload, headers=headers)
+        with opener.open(req, timeout=10) as r:
+            return r.read().decode("utf-8")
+
+    if proxy_mode == "direct":
+        return _post(False)
+    if proxy_mode == "proxy":
+        return _post(True)
+    try:
+        return _post(False)
+    except Exception as e:  # noqa: BLE001
+        print(f"[push] 直连 webhook 失败（{e}），回退走环境代理重试", flush=True)
+        return _post(True)
 
 
 def send_email(cfg, subject, body):
@@ -167,14 +200,15 @@ def push_quarterly_alerts(quarter=None, threshold=None):
         wc = cfg.get("wechat", {}).get("webhook_url")
         if wc:
             try:
-                send_wechat(wc, format_wechat(quarter, prev, alerts, threshold))
+                send_wechat(wc, format_wechat(quarter, prev, alerts, threshold),
+                            proxy_mode=cfg.get("wechat", {}).get("proxy_mode", "auto"))
                 print("[push] 企微推送成功", flush=True)
             except Exception as ex:
                 print(f"[push] 企微推送失败: {ex}", flush=True)
         em = cfg.get("email", {})
         if em.get("smtp_host") and em.get("to"):
             try:
-                subj, body = format_email(quarter, prev, alerts)
+                subj, body = format_email(quarter, prev, alerts, threshold)
                 send_email(cfg, subj, body)
                 print("[push] 邮件推送成功", flush=True)
             except Exception as ex:
