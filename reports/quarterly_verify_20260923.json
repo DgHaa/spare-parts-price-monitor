@@ -1,0 +1,508 @@
+{
+  "coverage": [
+    {
+      "brand": "apple",
+      "cc": "ae",
+      "models": 170,
+      "priced_models": 170,
+      "snaps": 455,
+      "snaps_today": 0,
+      "oldest": "2026-09-02",
+      "newest": "2026-09-18"
+    },
+    {
+      "brand": "apple",
+      "cc": "cn",
+      "models": 139,
+      "priced_models": 139,
+      "snaps": 393,
+      "snaps_today": 0,
+      "oldest": "2026-09-22",
+      "newest": "2026-09-22"
+    },
+    {
+      "brand": "apple",
+      "cc": "de",
+      "models": 170,
+      "priced_models": 170,
+      "snaps": 455,
+      "snaps_today": 0,
+      "oldest": "2026-09-17",
+      "newest": "2026-09-18"
+    },
+    {
+      "brand": "apple",
+      "cc": "jp",
+      "models": 166,
+      "priced_models": 166,
+      "snaps": 447,
+      "snaps_today": 0,
+      "oldest": "2026-09-02",
+      "newest": "2026-09-18"
+    },
+    {
+      "brand": "apple",
+      "cc": "mx",
+      "models": 170,
+      "priced_models": 170,
+      "snaps": 455,
+      "snaps_today": 0,
+      "oldest": "2026-09-22",
+      "newest": "2026-09-22"
+    },
+    {
+      "brand": "apple",
+      "cc": "my",
+      "models": 170,
+      "priced_models": 170,
+      "snaps": 455,
+      "snaps_today": 0,
+      "oldest": "2026-09-02",
+      "newest": "2026-09-18"
+    },
+    {
+      "brand": "oppo",
+      "cc": "ae",
+      "models": 120,
+      "priced_models": 120,
+      "snaps": 1042,
+      "snaps_today": 1042,
+      "oldest": "2026-09-23",
+      "newest": "2026-09-23"
+    },
+    {
+      "brand": "oppo",
+      "cc": "cn",
+      "models": 574,
+      "priced_models": 574,
+      "snaps": 6841,
+      "snaps_today": 6841,
+      "oldest": "2026-09-23",
+      "newest": "2026-09-23"
+    },
+    {
+      "brand": "oppo",
+      "cc": "de",
+      "models": 25,
+      "priced_models": 25,
+      "snaps": 155,
+      "snaps_today": 155,
+      "oldest": "2026-09-23",
+      "newest": "2026-09-23"
+    },
+    {
+      "brand": "oppo",
+      "cc": "jp",
+      "models": 26,
+      "priced_models": 26,
+      "snaps": 172,
+      "snaps_today": 172,
+      "oldest": "2026-09-23",
+      "newest": "2026-09-23"
+    },
+    {
+      "brand": "oppo",
+      "cc": "mx",
+      "models": 64,
+      "priced_models": 64,
+      "snaps": 766,
+      "snaps_today": 766,
+      "oldest": "2026-09-23",
+      "newest": "2026-09-23"
+    },
+    {
+      "brand": "oppo",
+      "cc": "my",
+      "models": 171,
+      "priced_models": 171,
+      "snaps": 1135,
+      "snaps_today": 1135,
+      "oldest": "2026-09-23",
+      "newest": "2026-09-23"
+    },
+    {
+      "brand": "oppo",
+      "cc": "tr",
+      "models": 60,
+      "priced_models": 60,
+      "snaps": 415,
+      "snaps_today": 415,
+      "oldest": "2026-09-23",
+      "newest": "2026-09-23"
+    },
+    {
+      "brand": "samsung",
+      "cc": "ae",
+      "models": 55,
+      "priced_models": 55,
+      "snaps": 88,
+      "snaps_today": 0,
+      "oldest": "2026-09-18",
+      "newest": "2026-09-18"
+    },
+    {
+      "brand": "samsung",
+      "cc": "cn",
+      "models": 9,
+      "priced_models": 9,
+      "snaps": 54,
+      "snaps_today": 54,
+      "oldest": "2026-09-23",
+      "newest": "2026-09-23"
+    },
+    {
+      "brand": "samsung",
+      "cc": "de",
+      "models": 366,
+      "priced_models": 366,
+      "snaps": 1136,
+      "snaps_today": 0,
+      "oldest": "2026-09-18",
+      "newest": "2026-09-18"
+    },
+    {
+      "brand": "samsung",
+      "cc": "jp",
+      "models": 71,
+      "priced_models": 71,
+      "snaps": 215,
+      "snaps_today": 0,
+      "oldest": "2026-09-18",
+      "newest": "2026-09-18"
+    },
+    {
+      "brand": "samsung",
+      "cc": "my",
+      "models": 80,
+      "priced_models": 80,
+      "snaps": 333,
+      "snaps_today": 0,
+      "oldest": "2026-09-18",
+      "newest": "2026-09-18"
+    },
+    {
+      "brand": "samsung",
+      "cc": "tr",
+      "models": 84,
+      "priced_models": 84,
+      "snaps": 157,
+      "snaps_today": 0,
+      "oldest": "2026-09-18",
+      "newest": "2026-09-18"
+    },
+    {
+      "brand": "vivo",
+      "cc": "ae",
+      "models": 90,
+      "priced_models": 86,
+      "snaps": 766,
+      "snaps_today": 0,
+      "oldest": "2026-09-17",
+      "newest": "2026-09-17"
+    },
+    {
+      "brand": "vivo",
+      "cc": "cn",
+      "models": 428,
+      "priced_models": 428,
+      "snaps": 2406,
+      "snaps_today": 0,
+      "oldest": "2026-09-22",
+      "newest": "2026-09-22"
+    },
+    {
+      "brand": "vivo",
+      "cc": "mx",
+      "models": 36,
+      "priced_models": 36,
+      "snaps": 324,
+      "snaps_today": 0,
+      "oldest": "2026-09-22",
+      "newest": "2026-09-22"
+    },
+    {
+      "brand": "vivo",
+      "cc": "my",
+      "models": 150,
+      "priced_models": 141,
+      "snaps": 1139,
+      "snaps_today": 0,
+      "oldest": "2026-09-17",
+      "newest": "2026-09-17"
+    },
+    {
+      "brand": "vivo",
+      "cc": "tr",
+      "models": 55,
+      "priced_models": 54,
+      "snaps": 455,
+      "snaps_today": 0,
+      "oldest": "2026-09-17",
+      "newest": "2026-09-17"
+    },
+    {
+      "brand": "xiaomi",
+      "cc": "cn",
+      "models": 2510,
+      "priced_models": 2375,
+      "snaps": 21264,
+      "snaps_today": 0,
+      "oldest": "2026-09-18",
+      "newest": "2026-09-18"
+    }
+  ],
+  "ranges": [
+    {
+      "brand": "apple",
+      "cur": "AED",
+      "n": 455,
+      "pmin": 269.0,
+      "pmax": 4609.0,
+      "lmin": null,
+      "lmax": null,
+      "cnymax": 8435.938353982301
+    },
+    {
+      "brand": "apple",
+      "cur": "CNY",
+      "n": 393,
+      "pmin": 559.0,
+      "pmax": 7298.0,
+      "lmin": null,
+      "lmax": null,
+      "cnymax": 7298.0
+    },
+    {
+      "brand": "apple",
+      "cur": "EUR",
+      "n": 455,
+      "pmin": 79.0,
+      "pmax": 1329.0,
+      "lmin": null,
+      "lmax": null,
+      "cnymax": 10260.838209146545
+    },
+    {
+      "brand": "apple",
+      "cur": "JPY",
+      "n": 447,
+      "pmin": 12000.0,
+      "pmax": 199300.0,
+      "lmin": null,
+      "lmax": null,
+      "cnymax": 8596.613768391828
+    },
+    {
+      "brand": "apple",
+      "cur": "MXN",
+      "n": 455,
+      "pmin": 1499.0,
+      "pmax": 26499.0,
+      "lmin": null,
+      "lmax": null,
+      "cnymax": 10328.994044089803
+    },
+    {
+      "brand": "apple",
+      "cur": "MYR",
+      "n": 455,
+      "pmin": 309.0,
+      "pmax": 5589.0,
+      "lmin": null,
+      "lmax": null,
+      "cnymax": 9170.983227880004
+    },
+    {
+      "brand": "oppo",
+      "cur": "AED",
+      "n": 1042,
+      "pmin": 14.0,
+      "pmax": 3300.0,
+      "lmin": 0.0,
+      "lmax": 80.0,
+      "cnymax": 6032.525799863853
+    },
+    {
+      "brand": "oppo",
+      "cur": "CNY",
+      "n": 6841,
+      "pmin": 5.0,
+      "pmax": 6299.0,
+      "lmin": 0.0,
+      "lmax": 580.0,
+      "cnymax": 6299.0
+    },
+    {
+      "brand": "oppo",
+      "cur": "EUR",
+      "n": 155,
+      "pmin": 50.0,
+      "pmax": 270.0,
+      "lmin": 0.0,
+      "lmax": 0.0,
+      "cnymax": 2075.8387186543396
+    },
+    {
+      "brand": "oppo",
+      "cur": "JPY",
+      "n": 172,
+      "pmin": 1500.0,
+      "pmax": 210000.0,
+      "lmin": 0.0,
+      "lmax": 0.0,
+      "cnymax": 8956.103073436574
+    },
+    {
+      "brand": "oppo",
+      "cur": "MXN",
+      "n": 766,
+      "pmin": 4.11,
+      "pmax": 22790.52,
+      "lmin": 240.0,
+      "lmax": 650.0,
+      "cnymax": 8852.522822321576
+    },
+    {
+      "brand": "oppo",
+      "cur": "MYR",
+      "n": 1135,
+      "pmin": 19.0,
+      "pmax": 3939.0,
+      "lmin": 50.0,
+      "lmax": 50.0,
+      "cnymax": 6490.602898249078
+    },
+    {
+      "brand": "oppo",
+      "cur": "TRY",
+      "n": 415,
+      "pmin": 138.0,
+      "pmax": 49783.5,
+      "lmin": 1350.0,
+      "lmax": 1350.0,
+      "cnymax": 6844.344939816483
+    },
+    {
+      "brand": "samsung",
+      "cur": "AED",
+      "n": 88,
+      "pmin": 220.0,
+      "pmax": 3093.0,
+      "lmin": null,
+      "lmax": null,
+      "cnymax": 5661.175380530974
+    },
+    {
+      "brand": "samsung",
+      "cur": "CNY",
+      "n": 54,
+      "pmin": 116.1,
+      "pmax": 4270.0,
+      "lmin": null,
+      "lmax": null,
+      "cnymax": 4270.0
+    },
+    {
+      "brand": "samsung",
+      "cur": "EUR",
+      "n": 1136,
+      "pmin": 68.0,
+      "pmax": 575.0,
+      "lmin": null,
+      "lmax": null,
+      "cnymax": 4439.414575063403
+    },
+    {
+      "brand": "samsung",
+      "cur": "JPY",
+      "n": 215,
+      "pmin": 3630.0,
+      "pmax": 148610.0,
+      "lmin": null,
+      "lmax": null,
+      "cnymax": 6410.149383445607
+    },
+    {
+      "brand": "samsung",
+      "cur": "MYR",
+      "n": 333,
+      "pmin": 86.0,
+      "pmax": 2496.0,
+      "lmin": null,
+      "lmax": null,
+      "cnymax": 4095.683330969492
+    },
+    {
+      "brand": "samsung",
+      "cur": "TRY",
+      "n": 157,
+      "pmin": 3000.0,
+      "pmax": 41800.0,
+      "lmin": null,
+      "lmax": null,
+      "cnymax": 5765.750700836584
+    },
+    {
+      "brand": "vivo",
+      "cur": "AED",
+      "n": 766,
+      "pmin": 10.0,
+      "pmax": 3228.0,
+      "lmin": null,
+      "lmax": null,
+      "cnymax": 5908.660407896528
+    },
+    {
+      "brand": "vivo",
+      "cur": "CNY",
+      "n": 2406,
+      "pmin": 19.0,
+      "pmax": 5630.0,
+      "lmin": 50.0,
+      "lmax": 50.0,
+      "cnymax": 5630.0
+    },
+    {
+      "brand": "vivo",
+      "cur": "MXN",
+      "n": 324,
+      "pmin": 150.0,
+      "pmax": 14300.0,
+      "lmin": null,
+      "lmax": null,
+      "cnymax": 5573.969388674447
+    },
+    {
+      "brand": "vivo",
+      "cur": "MYR",
+      "n": 1139,
+      "pmin": 5.0,
+      "pmax": 3660.0,
+      "lmin": null,
+      "lmax": null,
+      "cnymax": 6020.227232909694
+    },
+    {
+      "brand": "vivo",
+      "cur": "TRY",
+      "n": 455,
+      "pmin": 95.0,
+      "pmax": 61200.0,
+      "lmin": null,
+      "lmax": null,
+      "cnymax": 8450.369462640876
+    },
+    {
+      "brand": "xiaomi",
+      "cur": "CNY",
+      "n": 21264,
+      "pmin": 6.0,
+      "pmax": 4240.0,
+      "lmin": 30.0,
+      "lmax": 100.0,
+      "cnymax": 4240.0
+    }
+  ],
+  "diff": [],
+  "findings": []
+}

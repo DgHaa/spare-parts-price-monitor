@@ -1,0 +1,434 @@
+[
+ {
+  "model": "Galaxy S23",
+  "part": "主板",
+  "price": 2380.0,
+  "currency": "CNY",
+  "cny_price": 2380.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S23",
+  "part": "充电口",
+  "price": 127.26,
+  "currency": "CNY",
+  "cny_price": 127.26,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S23",
+  "part": "后盖",
+  "price": 155.0,
+  "currency": "CNY",
+  "cny_price": 155.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S23",
+  "part": "屏幕",
+  "price": 922.13,
+  "currency": "CNY",
+  "cny_price": 922.13,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S23",
+  "part": "摄像头",
+  "price": 151.61,
+  "currency": "CNY",
+  "cny_price": 151.61,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S23",
+  "part": "电池",
+  "price": 160.0,
+  "currency": "CNY",
+  "cny_price": 160.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S23 Ultra",
+  "part": "主板",
+  "price": 3900.0,
+  "currency": "CNY",
+  "cny_price": 3900.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S23 Ultra",
+  "part": "充电口",
+  "price": 129.38,
+  "currency": "CNY",
+  "cny_price": 129.38,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S23 Ultra",
+  "part": "后盖",
+  "price": 225.0,
+  "currency": "CNY",
+  "cny_price": 225.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S23 Ultra",
+  "part": "屏幕",
+  "price": 1514.85,
+  "currency": "CNY",
+  "cny_price": 1514.85,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S23 Ultra",
+  "part": "摄像头",
+  "price": 504.34,
+  "currency": "CNY",
+  "cny_price": 504.34,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S23 Ultra",
+  "part": "电池",
+  "price": 160.0,
+  "currency": "CNY",
+  "cny_price": 160.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S23+",
+  "part": "主板",
+  "price": 3100.0,
+  "currency": "CNY",
+  "cny_price": 3100.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S23+",
+  "part": "充电口",
+  "price": 129.93,
+  "currency": "CNY",
+  "cny_price": 129.93,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S23+",
+  "part": "后盖",
+  "price": 160.0,
+  "currency": "CNY",
+  "cny_price": 160.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S23+",
+  "part": "屏幕",
+  "price": 1133.92,
+  "currency": "CNY",
+  "cny_price": 1133.92,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S23+",
+  "part": "摄像头",
+  "price": 160.86,
+  "currency": "CNY",
+  "cny_price": 160.86,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S23+",
+  "part": "电池",
+  "price": 160.0,
+  "currency": "CNY",
+  "cny_price": 160.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S24",
+  "part": "主板",
+  "price": 2420.0,
+  "currency": "CNY",
+  "cny_price": 2420.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S24",
+  "part": "充电口",
+  "price": 118.48,
+  "currency": "CNY",
+  "cny_price": 118.48,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S24",
+  "part": "后盖",
+  "price": 135.0,
+  "currency": "CNY",
+  "cny_price": 135.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S24",
+  "part": "屏幕",
+  "price": 889.96,
+  "currency": "CNY",
+  "cny_price": 889.96,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S24",
+  "part": "摄像头",
+  "price": 151.61,
+  "currency": "CNY",
+  "cny_price": 151.61,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S24",
+  "part": "电池",
+  "price": 140.0,
+  "currency": "CNY",
+  "cny_price": 140.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S24 Ultra",
+  "part": "主板",
+  "price": 4270.0,
+  "currency": "CNY",
+  "cny_price": 4270.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S24 Ultra",
+  "part": "充电口",
+  "price": 116.1,
+  "currency": "CNY",
+  "cny_price": 116.1,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S24 Ultra",
+  "part": "后盖",
+  "price": 155.0,
+  "currency": "CNY",
+  "cny_price": 155.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S24 Ultra",
+  "part": "屏幕",
+  "price": 1469.04,
+  "currency": "CNY",
+  "cny_price": 1469.04,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S24 Ultra",
+  "part": "摄像头",
+  "price": 179.53,
+  "currency": "CNY",
+  "cny_price": 179.53,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S24 Ultra",
+  "part": "电池",
+  "price": 140.0,
+  "currency": "CNY",
+  "cny_price": 140.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S24+",
+  "part": "主板",
+  "price": 3429.13,
+  "currency": "CNY",
+  "cny_price": 3429.13,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S24+",
+  "part": "充电口",
+  "price": 117.16,
+  "currency": "CNY",
+  "cny_price": 117.16,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S24+",
+  "part": "后盖",
+  "price": 140.0,
+  "currency": "CNY",
+  "cny_price": 140.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S24+",
+  "part": "屏幕",
+  "price": 1123.77,
+  "currency": "CNY",
+  "cny_price": 1123.77,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S24+",
+  "part": "摄像头",
+  "price": 151.61,
+  "currency": "CNY",
+  "cny_price": 151.61,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S24+",
+  "part": "电池",
+  "price": 140.0,
+  "currency": "CNY",
+  "cny_price": 140.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S25",
+  "part": "主板",
+  "price": 3522.61,
+  "currency": "CNY",
+  "cny_price": 3522.61,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S25",
+  "part": "充电口",
+  "price": 133.69,
+  "currency": "CNY",
+  "cny_price": 133.69,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S25",
+  "part": "后盖",
+  "price": 150.0,
+  "currency": "CNY",
+  "cny_price": 150.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S25",
+  "part": "屏幕",
+  "price": 848.96,
+  "currency": "CNY",
+  "cny_price": 848.96,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S25",
+  "part": "摄像头",
+  "price": 151.61,
+  "currency": "CNY",
+  "cny_price": 151.61,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S25",
+  "part": "电池",
+  "price": 135.0,
+  "currency": "CNY",
+  "cny_price": 135.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S25 Ultra",
+  "part": "主板",
+  "price": 4267.0,
+  "currency": "CNY",
+  "cny_price": 4267.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S25 Ultra",
+  "part": "充电口",
+  "price": 137.98,
+  "currency": "CNY",
+  "cny_price": 137.98,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S25 Ultra",
+  "part": "后盖",
+  "price": 166.0,
+  "currency": "CNY",
+  "cny_price": 166.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S25 Ultra",
+  "part": "屏幕",
+  "price": 1500.06,
+  "currency": "CNY",
+  "cny_price": 1500.06,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S25 Ultra",
+  "part": "摄像头",
+  "price": 237.15,
+  "currency": "CNY",
+  "cny_price": 237.15,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S25 Ultra",
+  "part": "电池",
+  "price": 161.0,
+  "currency": "CNY",
+  "cny_price": 161.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S25+",
+  "part": "主板",
+  "price": 4055.14,
+  "currency": "CNY",
+  "cny_price": 4055.14,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S25+",
+  "part": "充电口",
+  "price": 145.2,
+  "currency": "CNY",
+  "cny_price": 145.2,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S25+",
+  "part": "后盖",
+  "price": 150.0,
+  "currency": "CNY",
+  "cny_price": 150.0,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S25+",
+  "part": "屏幕",
+  "price": 1123.53,
+  "currency": "CNY",
+  "cny_price": 1123.53,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S25+",
+  "part": "摄像头",
+  "price": 151.61,
+  "currency": "CNY",
+  "cny_price": 151.61,
+  "cap": "2026-09-22"
+ },
+ {
+  "model": "Galaxy S25+",
+  "part": "电池",
+  "price": 137.0,
+  "currency": "CNY",
+  "cny_price": 137.0,
+  "cap": "2026-09-22"
+ }
+]

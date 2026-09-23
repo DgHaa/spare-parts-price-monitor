@@ -65,3 +65,7 @@ web/dist/
 
 # === 根目录回归验证截图（本地留证，不入仓；正式截图放 output/shots_poster/）===
 /out_*.png
+
+# === 回归验证工具的结果转储（每次运行覆盖，属临时产物） ===
+logs_*_result.txt
+/verify_*_result.txt
