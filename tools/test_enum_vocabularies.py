@@ -236,6 +236,139 @@ def main() -> int:
     check("复原后巡检重新通过",
           any(c == "ENUM_INVALID" for _, c, _ in rep_fix.rows), False)
 
+    # ---- 7) 第三轮：推导型词汇表（部件品类 / 币种 / 语种） -------------------
+    # 本轮的关键手法：词表**不手写**，而是从唯一的生成器推导，杜绝"加了规则忘了改常量"。
+    # 下面的断言独立重推一遍，证明集合确实来自生成器而非抄写。
+    print("\n[7] 推导型词汇表（part_type / currency / lang）")
+
+    # 7.1 部件品类：从 _MANUAL_CATEGORY_MAP 独立重推
+    rederived = {lab for _rx, lab in db._MANUAL_CATEGORY_MAP} | {db.PART_TYPE_OTHER}
+    check("VALID_PART_TYPES == 从 _MANUAL_CATEGORY_MAP 重推的结果",
+          set(db.VALID_PART_TYPES), rederived)
+    check("  含兜底类 '其他'", db.PART_TYPE_OTHER in db.VALID_PART_TYPES, True)
+    check("  数量 = 映射表标签数 + 1", len(db.VALID_PART_TYPES), len(rederived))
+    # 反向：加了规则就必须自动进白名单（本断言在"手抄常量"的实现下会失败）
+    check("  _MANUAL_CATEGORY_MAP 的每个标签都在白名单内",
+          all(lab in db.VALID_PART_TYPES for _rx, lab in db._MANUAL_CATEGORY_MAP), True)
+    # 品类不会与 models.category（产品品类）混为一谈
+    check("  与 VALID_CATEGORIES 无交集（两套词汇表）",
+          set(db.VALID_PART_TYPES) & set(db.VALID_CATEGORIES), set())
+
+    # 7.2 币种：必须等于汇率表的键（能折算才合法）
+    check("VALID_CURRENCIES == frozenset(STATIC_RATES)",
+          set(db.VALID_CURRENCIES), set(db.STATIC_RATES))
+    check("  每个币种都能取到汇率（无 None）",
+          all(db.STATIC_RATES[c] is not None for c in db.VALID_CURRENCIES), True)
+    # 反向：新增汇率必须自动进白名单
+    check("  STATIC_RATES 的每个键都在白名单内",
+          all(c in db.VALID_CURRENCIES for c in db.STATIC_RATES), True)
+
+    # 7.3 语种：白名单必须与 part_norm._detect_lang 的返回分支一一对应
+    from crawler import part_norm as _pn  # noqa: E402
+    probes = {"ja": "画面の損傷", "tr": "şarj cihazı", "zh": "电池",
+              "de": "Displayschaden", "en": "Battery Replacement"}
+    got_langs = {exp: _pn._detect_lang(s) for exp, s in probes.items()}
+    check("_detect_lang 探测结果与预期一致",
+          got_langs, {k: k for k in probes})
+    check("  _detect_lang 的全部返回值 ⊆ VALID_LANGS",
+          set(got_langs.values()) <= set(db.VALID_LANGS), True)
+    check("  VALID_LANGS 无多余项（每个值都能被真实探测到）",
+          set(db.VALID_LANGS) - set(got_langs.values()), set())
+
+    # 7.3b ⚠️ 已知缺陷（本测试在加固语种时发现，尚未修复——属行为变更，待确认后另做）
+    # _detect_lang 的土耳其字符类 [ıİşŞğĞçÇöÖüÜ] 排在德语词表**之前**，而德语
+    # Rückglas / Rückkamera 含 ü，被抢先判成 tr。实测生产库 de 国家下 84 行受影响。
+    # 注意影响面有限：normalize() 的查表键是 (part_type, key)，**不含 lang**，
+    # 故归一化本身不受影响，仅是 lang 标签错误（不参与比价）。
+    # 这里把它钉住：一旦有人修复，本断言会失败并提醒同步更新报告与巡检。
+    check("已知缺陷：含变音符的德语词被误判为 tr（见 reports/enum_columns_round2）",
+          _pn._detect_lang("Rückglas"), "tr")
+    check("  对照：不含变音符的德语词判定正确",
+          _pn._detect_lang("Displayschaden"), "de")
+
+    # 7.4 写入口拦截：非法 part_type / currency 必须被拦下且不落库
+    n_parts0 = count(con, "parts")
+    expect_raise("upsert_part(part_type='屏暮')", db.upsert_part, mid, "__t1__", "屏暮")
+    check("  非法 part_type 未落库", count(con, "parts"), n_parts0)
+    expect_raise("upsert_part(part_type='Screen')", db.upsert_part, mid, "__t2__", "Screen")
+    check("  非法 part_type（英文）未落库", count(con, "parts"), n_parts0)
+    db.upsert_part(mid, "__t3__", "其他")
+    check("  合法 part_type='其他' 正常落库", count(con, "parts"), n_parts0 + 1)
+
+    n_c0 = count(con, "countries")
+    expect_raise("upsert_country(currency='EURO')", db.upsert_country, "__xx__", "X", "EURO")
+    check("  非法 currency 未落库", count(con, "countries"), n_c0)
+    expect_raise("upsert_country(currency='')", db.upsert_country, "__xx__", "X", "")
+    check("  空 currency 也未落库", count(con, "countries"), n_c0)
+    db.upsert_country("__xx__", "X", "EUR")
+    check("  合法 currency='EUR' 正常落库", count(con, "countries"), n_c0 + 1)
+
+    # 7.5 巡检必须捕获这两类非法值
+    con.execute("UPDATE parts SET part_type='屏暮' WHERE name='__t3__'")
+    con.execute("UPDATE countries SET currency='EURO' WHERE code='__xx__'")
+    con.commit()
+    rep7 = V.Report()
+    V.check_enum_vocabularies(con, rep7)
+    msgs7 = [m for _sev, c, m in rep7.rows if c == "ENUM_INVALID"]
+    check("巡检捕获 parts.part_type 非法值",
+          any("parts.part_type" in m for m in msgs7), True)
+    check("巡检捕获 countries.currency 非法值",
+          any("countries.currency" in m for m in msgs7), True)
+    con.execute("UPDATE parts SET part_type='其他' WHERE name='__t3__'")
+    con.execute("UPDATE countries SET currency='EUR' WHERE code='__xx__'")
+    con.commit()
+    rep7b = V.Report()
+    V.check_enum_vocabularies(con, rep7b)
+    check("复原后巡检重新通过（第三轮）",
+          any(c == "ENUM_INVALID" for _sev, c, _m in rep7b.rows), False)
+
+    # ---- 8) 静态 lint：引用了 db.X 就必须 import db --------------------------
+    # 本轮真实踩到：把 run.py 里的字面量换成 db.MODEL_URL_KIND_* 时，忘了该文件用的是
+    # `from db import (...)`，没有 `import db` —— 模块能正常 import（该表达式在函数体内，
+    # 不在导入期求值），只在**跑那条抓取路径时**才 NameError。静态检查比跑一遍抓取便宜得多。
+    print("\n[8] 静态 lint：db.X 引用与 import db 必须配套")
+    import ast  # noqa: E402
+
+    def _uses_db(tree):
+        return any(isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name)
+                   and n.value.id == "db" for n in ast.walk(tree))
+
+    def _imports_db(tree):
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Import):
+                if any(a.name == "db" or a.asname == "db" for a in n.names):
+                    return True
+            if (isinstance(n, ast.ImportFrom) and n.module == "db"
+                    and any(a.name == "db" for a in n.names)):
+                return True
+        return False
+
+    offenders = []
+    for p in sorted(ROOT.rglob("*.py")):
+        sp = str(p)
+        if any(x in sp for x in (".git", "vendor", "node_modules", "_archive")):
+            continue
+        try:
+            tree = ast.parse(p.read_text(encoding="utf-8", errors="replace"))
+        except SyntaxError:
+            continue
+        if _uses_db(tree) and not _imports_db(tree):
+            offenders.append(sp.replace(str(ROOT), ".").replace("\\", "/"))
+    check("无『引用 db.X 但未 import db』的模块", offenders, [])
+
+    # 8.1 直接验证 run.py 的链接类型常量确实解析到 db 的值
+    # （本轮改动的正是这里；若 import 列表漏了名字，这里会 AttributeError）
+    from crawler import run as _run  # noqa: E402
+    check("run.MODEL_URL_KIND_API == db.MODEL_URL_KIND_API",
+          _run.MODEL_URL_KIND_API, db.MODEL_URL_KIND_API)
+    check("run.MODEL_URL_KIND_PAGE == db.MODEL_URL_KIND_PAGE",
+          _run.MODEL_URL_KIND_PAGE, db.MODEL_URL_KIND_PAGE)
+    check("run.MODEL_URL_KIND_BRAND_ENTRY == db.MODEL_URL_KIND_BRAND_ENTRY",
+          _run.MODEL_URL_KIND_BRAND_ENTRY, db.MODEL_URL_KIND_BRAND_ENTRY)
+    check("  三者在快照词汇表内（否则写入口会拦下真实抓取）",
+          {_run.MODEL_URL_KIND_API, _run.MODEL_URL_KIND_PAGE,
+           _run.MODEL_URL_KIND_BRAND_ENTRY} <= set(db.VALID_SNAPSHOT_URL_KINDS), True)
+
     con.close()
     shutil.rmtree(tmp.parent, ignore_errors=True)
 

@@ -34,7 +34,8 @@ from db import (init_db, upsert_brand, upsert_country, upsert_model,  # noqa: E4
                 get_conn,
                 STATUS_SUCCESS, STATUS_PARTIAL, STATUS_FAILED,
                 STATUS_RESUMED, STATUS_UNAVAILABLE, STATUS_SKIPPED,
-                summarize_status)
+                summarize_status,
+                MODEL_URL_KIND_API, MODEL_URL_KIND_PAGE, MODEL_URL_KIND_BRAND_ENTRY)
 
 # 抓取范围（全量设计）：models=None 表示尽量自动发现全部机型。
 # 华为国内外友商 5 家全覆盖（apple / oppo / samsung / vivo / xiaomi）。
@@ -783,9 +784,15 @@ def write_rows(brand, country, country_name, model_name, rows, rec, detail_url=N
     #   其余模式此处只有品牌级入口 → 先记 brand_entry，抓取结束后由
     #   crawler.model_links.backfill_links 生成并实测机型级链接再覆盖。
     mode = rec.get("query", {}).get("mode")
-    src_kind = ("model_api" if detail_url and mode in ("api_json", "xiaomi_api", "vivo_api")
-                else ("model_page" if detail_url and mode == "api_reborn" else "brand_entry"))
-    _model_url = detail_url if src_kind in ("model_api", "model_page") else None
+    # 链接类型绑定 db 单一来源（勿写回字面量：与 VALID_SNAPSHOT_URL_KINDS 漂移会让
+    # 前端"是否精确到本机型"的标注失真，且写入口断言会直接拦下）
+    src_kind = (MODEL_URL_KIND_API
+                if detail_url and mode in ("api_json", "xiaomi_api", "vivo_api")
+                else (MODEL_URL_KIND_PAGE
+                      if detail_url and mode == "api_reborn"
+                      else MODEL_URL_KIND_BRAND_ENTRY))
+    _model_url = detail_url if src_kind in (MODEL_URL_KIND_API,
+                                           MODEL_URL_KIND_PAGE) else None
     tax_included = TAX_INCLUDED.get((brand, country), 1)
     conn = get_conn()
     try:

@@ -59,14 +59,17 @@ def _invalid_enum_counts(c):
       · models.tier 写错     → api_tiers() 的 SELECT DISTINCT 会多出一个下拉选项
       · source_url_kind 写错 → 前端"是否精确到本机型"的标注说谎
       · 工单状态写错         → 未解决工单计数归零（看着像全清了）
+      · parts.part_type 写错 → 比价行的分组键多出一个幻影分组（影响 4.4 万行）
+      · currency 写错        → get_rate() 返回 None，cny_price 静默为 NULL
     返回 {"<table>.<col>": 非法行数}。全部为 0 才算干净；
     tools/verify_quarterly_run.py 有对应的 ERROR 级巡检。
     """
-    def bad(table, col, valid):
+    def bad(table, col, valid, allow_empty=False):
         marks = ",".join("?" * len(valid))
+        extra = f" AND {col}<>''" if allow_empty else ""
         return c.execute(
             f"SELECT COUNT(*) n FROM {table} "
-            f"WHERE {col} IS NOT NULL AND {col} NOT IN ({marks})",
+            f"WHERE {col} IS NOT NULL{extra} AND {col} NOT IN ({marks})",
             tuple(sorted(valid))).fetchone()["n"]
 
     out = {
@@ -78,6 +81,15 @@ def _invalid_enum_counts(c):
         "maintenance_queue.status": bad(
             "maintenance_queue", "status", db.VALID_ISSUE_STATUSES),
         "brands.recipe_mode": bad("brands", "recipe_mode", db.VALID_RECIPE_MODES),
+        # 备件品类：比价聚合的分组键（api/server.py 9 处 COALESCE 分组/过滤）
+        "parts.part_type": bad("parts", "part_type", db.VALID_PART_TYPES),
+        "parts.canonical_type": bad("parts", "canonical_type", db.VALID_PART_TYPES),
+        "parts.lang": bad("parts", "lang", db.VALID_LANGS),
+        "parts.norm_rule": bad("parts", "norm_rule", db.VALID_NORM_RULES),
+        # 币种：写错 → get_rate() 返回 None → cny_price 静默为 NULL
+        # ⚠️ 不含 exchange_rates.currency：该列由汇率接口灌入（实测 166 种），是开放词表
+        "countries.currency": bad("countries", "currency", db.VALID_CURRENCIES),
+        "price_snapshots.currency": bad("price_snapshots", "currency", db.VALID_CURRENCIES),
     }
     # rate_source 是前缀模式（static / live:<endpoint>），不能用 NOT IN 判定
     for tbl in ("exchange_rates", "price_snapshots"):

@@ -207,18 +207,40 @@ VALID_RECIPE_MODES = frozenset({
     RECIPE_VIVO_API, RECIPE_XIAOMI_API,
 })
 
+# parts.part_type / parts.canonical_type / part_alias.part_type / part_alias.canonical_type
+# —— **备件品类**。这是比价聚合的核心分组键（api/server.py 有 9 处
+# `COALESCE(p.canonical_type, p.part_type)` 做分组/过滤），写错会凭空多出一个分组、
+# 静默拆散比价矩阵——与 models.category 同构，但影响面更大（库内 4.4 万行）。
+# ⚠️ 词汇表**不在此手写**：它由 `_MANUAL_CATEGORY_MAP`（唯一的生成器）推导而来，
+# 见该表下方的 VALID_PART_TYPES。手抄一份必然与生成器漂移（往映射表加一条正则
+# 却忘了同步常量），故刻意从源头推导。
+PART_TYPE_OTHER = "其他"   # 兜底类：normalize_category() 未命中任何规则时的落点
 
-def _validate_enum(value, valid, label, allow_none=False, prefix_ok=()):
+# parts.norm_rule —— 备件名归一化所走的路径（内部溯源字段）
+NORM_RULE_ALIAS = "alias"
+NORM_RULE_ALIAS_FULL = "alias_full"   # ⚠️ 仅见于 part_norm.NormResult 的文档注释，
+                                      #    当前**无任何代码写入**（文档与实现不一致，
+                                      #    已记入 reports/enum_columns_round2 待决）
+NORM_RULE_FALLBACK = "fallback"
+VALID_NORM_RULES = frozenset({NORM_RULE_ALIAS, NORM_RULE_ALIAS_FULL, NORM_RULE_FALLBACK})
+
+
+def _validate_enum(value, valid, label, allow_none=False, prefix_ok=(), allow_empty=False):
     """通用枚举校验：非法即抛 ValueError，并附拼写纠错提示。
 
     allow_none=True  —— 用于 NULL 有明确含义的列（如 model_url_kind=None 表示未生成链接）
     prefix_ok        —— 用于前缀模式列（如 rate_source 的 "live:<endpoint>"）
+    allow_empty=True —— 用于「空串表示无值」的列（如 part_alias.canonical_type，
+                        空串 = 不做类型改写；注意 SQL 里 COALESCE 不认空串，
+                        故仅用于那些空串确实被消费方当"无"处理的列）
     """
     if value is None:
         if allow_none:
             return value
         raise ValueError(f"非法 {label}=None；合法值：{sorted(valid)}")
     if value in valid:
+        return value
+    if allow_empty and value == "":
         return value
     if isinstance(value, str):
         for p in prefix_ok:
@@ -273,6 +295,22 @@ def validate_snapshot_url_kind(v):
     """校验 price_snapshots.source_url_kind（None 合法 = 未标注链接粒度）。"""
     return _validate_enum(v, VALID_SNAPSHOT_URL_KINDS,
                           "price_snapshots.source_url_kind", allow_none=True)
+
+
+def validate_norm_rule(v):
+    """校验 parts.norm_rule（归一化路径）。None 合法 = 归一化整体失败的历史行。"""
+    return _validate_enum(v, VALID_NORM_RULES, "parts.norm_rule", allow_none=True)
+
+
+def validate_currency(v):
+    """校验 countries.currency / price_snapshots.currency。
+
+    ⚠️ 词汇表 = STATIC_RATES 的键（见其定义处），**不能**用于 exchange_rates.currency：
+    后者由 open.er-api.com 的响应灌入，实测 166 种（接口返回什么就是什么），是开放词表。
+
+    None 合法 = 未标注币种（历史行）。
+    """
+    return _validate_enum(v, VALID_CURRENCIES, "currency", allow_none=True)
 
 
 SCHEMA = """
@@ -432,6 +470,14 @@ STATIC_RATES = {
     "CNY": 1.0, "USD": 7.20, "EUR": 7.80, "JPY": 0.048, "AED": 1.96,
     "MYR": 1.55, "TRY": 0.21, "SGD": 5.30, "GBP": 9.10, "KRW": 0.0052, "MXN": 0.39,
 }
+
+# countries.currency / price_snapshots.currency 的合法集合同样**推导**而非手写：
+# 一个币种若不在汇率表里，get_rate() 返回 None，而 run.py 的
+# `cny = price * rate if rate else None` 会让 cny_price **静默为 NULL**——
+# 该行随后从所有 CNY 口径的比价里消失，且全链路不报错。
+# 因此「能折算」才是这个列的合法条件，直接绑定汇率表，新增国家时若币种无汇率
+# 会在写入口 fail-fast（强迫显式补汇率），而不是悄悄产出无 CNY 的行。
+VALID_CURRENCIES = frozenset(STATIC_RATES)
 
 
 _WAL_ENSURED = False  # 进程级标记：journal_mode=WAL 是**库文件属性**，每进程设一次即可
@@ -721,6 +767,32 @@ _MANUAL_CATEGORY_MAP = [
     (re.compile(r"眼镜|メガネ|gözlük", re.I), "眼镜"),
 ]
 
+# 备件品类词汇表：**从上面的映射表推导**，而不是手抄一份。
+# 这样往 _MANUAL_CATEGORY_MAP 加一条规则时，白名单自动跟着扩展，永不失配。
+# （手抄的副本会在"加了正则但忘了改常量"时静默失配——正是本类加固要消灭的问题。）
+# 注：normalize_category() 末尾的通用关键词兜底全部返回映射表里已有的标签，故无需另计。
+VALID_PART_TYPES = frozenset({lab for _, lab in _MANUAL_CATEGORY_MAP}) | {PART_TYPE_OTHER}
+
+
+def validate_part_type(v):
+    """校验备件品类（parts.part_type / parts.canonical_type 等）。
+
+    None 非法：upsert_part 里 `part_type or normalize_category(name)` 保证非空。
+    """
+    return _validate_enum(v, VALID_PART_TYPES, "parts.part_type")
+
+
+# parts.lang / part_alias.lang —— 备件原文语种。词汇表**封闭**：
+# 由 crawler/part_norm._detect_lang() 唯一产生（该函数只有 5 个 return 分支）。
+# 新增语种 = 显式修改那个函数，属有意识的决定，故此处断言语种漂移是安全的。
+# 回归测试 test_enum_vocabularies 会核对本集合与 _detect_lang 的分支一一对应。
+VALID_LANGS = frozenset({"zh", "en", "ja", "de", "tr"})
+
+
+def validate_lang(v):
+    """校验 parts.lang / part_alias.lang（备件原文语种）。"""
+    return _validate_enum(v, VALID_LANGS, "lang")
+
 
 def normalize_category(name):
     """备件名 -> 归一化品类（跨品牌/跨型号对齐比价行的关键）。
@@ -769,6 +841,10 @@ def upsert_brand(name, recipe_mode=None, note="", conn=None):
 
 
 def upsert_country(code, name="", currency="", locale="", conn=None):
+    # 枚举列写入口校验：币种写错会让 get_rate() 返回 None，
+    # 进而 run.py 的 `cny = price * rate if rate else None` 静默产出无 CNY 价的快照行
+    # （该行从此在所有 CNY 口径的比价里消失，且全链路不报错）。
+    currency = validate_currency(currency)
     own = conn is None
     c = conn or get_conn()
     c.execute("INSERT INTO countries(code, name, currency, locale) VALUES(?,?,?,?) "
@@ -845,13 +921,19 @@ def upsert_part(model_id, name, part_type=None, conn=None):
     等所有写入路径自动生效，无需各自处理。
     """
     part_type = part_type or normalize_category(name)
+    # 枚举列写入口校验：品类是比价聚合的分组键，写错会静默拆散矩阵（详见 VALID_PART_TYPES）
+    part_type = validate_part_type(part_type)
     try:
         from crawler import part_norm as _pn
         nr = _pn.normalize(name or "", part_type)
-        canon = (nr.canonical, nr.canonical_type or part_type or "", nr.spec,
-                 nr.variant, nr.lang, nr.rule, nr.conf, "part_alias.json@v" + _pn.alias_version())
+        canonical_type = nr.canonical_type or part_type
+        canon = (nr.canonical, validate_part_type(canonical_type), nr.spec,
+                 nr.variant, validate_lang(nr.lang), validate_norm_rule(nr.rule),
+                 nr.conf, "part_alias.json@v" + _pn.alias_version())
+    except ValueError:
+        raise                      # 枚举断言必须向上抛，不能被下面的兜底吞掉
     except Exception:
-        canon = (name or "", part_type or "", "", "", "", "fallback", 0, None)
+        canon = (name or "", part_type, "", "", "", NORM_RULE_FALLBACK, 0, None)
     own = conn is None
     c = conn or get_conn()
     c.execute(
@@ -929,6 +1011,8 @@ def insert_snapshot(part_id, quarter, price, currency, cny_price,
     # 汇率来源写错会让折算可信度标注失真。
     rate_source = validate_rate_source(rate_source)
     source_url_kind = validate_snapshot_url_kind(source_url_kind)
+    # 币种写错 → get_rate() 返回 None → cny_price 静默为 None（见 upsert_country 注释）
+    currency = validate_currency(currency)
     own = conn is None
     c = conn or get_conn()
     c.execute("""INSERT INTO price_snapshots(part_id, quarter, price, currency, cny_price,

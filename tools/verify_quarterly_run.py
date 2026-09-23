@@ -301,24 +301,48 @@ def check_status_vocabulary(con, rep):
 
 
 def _enum_specs():
-    """待巡检的枚举列：(表, 列, 合法值集合, 写错会静默造成什么后果)。
+    """待巡检的枚举列：(表, 列, 合法值集合, 写错会静默造成什么后果, 是否允许空串)。
 
     说明列刻意写成"后果"而非"定义"——报错时它直接进 message，让人一眼知道为什么要修。
+    allow_empty：仅 part_alias.canonical_type 需要（空串 = 不做类型改写，是正常状态）。
     """
     return [
         ("models", "category", db.VALID_CATEGORIES,
          "写错会在 COALESCE(...,'phone') 之外凭空多出一个分组，静默拆散比价矩阵"
-         "（跨品类比价无意义），且按 category 过滤时该行不可见"),
+         "（跨品类比价无意义），且按 category 过滤时该行不可见", False),
         ("models", "tier", db.VALID_TIERS,
-         "写错会在 api_tiers() 的 SELECT DISTINCT 里多出一个假档位选项"),
+         "写错会在 api_tiers() 的 SELECT DISTINCT 里多出一个假档位选项", False),
         ("models", "model_url_kind", db.VALID_MODEL_URL_KINDS,
-         "写错会让前端『这条价格是否精确到本机型』的标注失真"),
+         "写错会让前端『这条价格是否精确到本机型』的标注失真", False),
         ("price_snapshots", "source_url_kind", db.VALID_SNAPSHOT_URL_KINDS,
-         "同上门；注意它与 models.model_url_kind 是**两套**词汇表（本列多 reference_cn）"),
+         "同上门；注意它与 models.model_url_kind 是**两套**词汇表（本列多 reference_cn）",
+         False),
         ("maintenance_queue", "status", db.VALID_ISSUE_STATUSES,
-         "写错会让未解决工单计数归零（待修队列看着像全清了，实际是条件失配）"),
+         "写错会让未解决工单计数归零（待修队列看着像全清了，实际是条件失配）", False),
         ("brands", "recipe_mode", db.VALID_RECIPE_MODES,
-         "写错会让 _job_needs_browser 误判该品牌是否需要浏览器，进而影响并发池划分"),
+         "写错会让 _job_needs_browser 误判该品牌是否需要浏览器，进而影响并发池划分", False),
+        # ---- 第二轮新增 ----
+        ("parts", "part_type", db.VALID_PART_TYPES,
+         "备件品类是比价聚合的分组键：写错会凭空多出一个分组，"
+         "同一类备件被拆成两行、静默拆散比价矩阵（api/server.py 有 9 处 "
+         "COALESCE(canonical_type, part_type) 分组）", False),
+        ("parts", "canonical_type", db.VALID_PART_TYPES,
+         "同上；且 COALESCE 不认空串，空值会变成一个名为 '' 的幻影分组", False),
+        ("part_alias", "part_type", db.VALID_PART_TYPES,
+         "归一化映射表的源品类写错，会把错误传染给 parts.part_type/canonical_type", False),
+        ("part_alias", "canonical_type", db.VALID_PART_TYPES,
+         "写错会把错误的类型改写应用到全量回填（空串 = 不改写，属正常）", True),
+        ("parts", "lang", db.VALID_LANGS,
+         "写错会让该语种的别名查表失效，静默回退到 fallback 归一并丢规格", False),
+        ("parts", "norm_rule", db.VALID_NORM_RULES,
+         "归一化路径溯源失真；注意 alias_full 仅存在于 part_norm 文档注释、无代码写入"
+         "（文档与实现不一致，已记录待决）", False),
+        ("countries", "currency", db.VALID_CURRENCIES,
+         "写错会让 get_rate() 返回 None，run.py 的 `cny = price * rate if rate else None`"
+         " 静默产出无 CNY 价的快照行（该行随即从所有 CNY 口径比价里消失）", False),
+        ("price_snapshots", "currency", db.VALID_CURRENCIES,
+         "同上（注意：exchange_rates.currency 是汇率接口灌入的开放词表，刻意不巡检）",
+         False),
     ]
 
 
@@ -335,11 +359,12 @@ def check_enum_vocabularies(con, rep):
     """
     problems = 0
     null_notes = []
-    for table, col, valid, why in _enum_specs():
+    for table, col, valid, why, allow_empty in _enum_specs():
         try:
+            extra = f" AND {col}<>''" if allow_empty else ""
             n = con.execute(
                 f"SELECT COUNT(*) FROM {table} "
-                f"WHERE {col} IS NOT NULL AND {col} NOT IN ({','.join('?' * len(valid))})",
+                f"WHERE {col} IS NOT NULL{extra} AND {col} NOT IN ({','.join('?' * len(valid))})",
                 tuple(sorted(valid))).fetchone()[0]
             nulls = con.execute(
                 f"SELECT COUNT(*) FROM {table} WHERE {col} IS NULL").fetchone()[0]
@@ -376,7 +401,7 @@ def check_enum_vocabularies(con, rep):
 
     if not problems:
         rep.add(SEV_INFO, "ENUM_VOCAB",
-                f"枚举列白名单通过（{len(_enum_specs()) + 2} 列）"
+                f"枚举列白名单通过（{len(_enum_specs())} 列 + rate_source 前缀列 2 处）"
                 + (f"；NULL 分布：{'、'.join(null_notes)}" if null_notes else ""))
 
 
