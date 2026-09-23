@@ -22,6 +22,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # 项目根，便于 import db
 from crawler.core import launch_browser, open_page, get_proxy  # noqa: E402
 from crawler.model_links import backfill_links, save_report  # noqa: E402
+from crawler.reference_prices import (apply_cn_reference, format_stats,  # noqa: E402
+                                      CN_REFERENCE_REGIONS)
 import executor  # 来自 skill scripts（core 已注入 sys.path）  # noqa: E402
 from normalize import parse_amount as _parse_amount  # skill scripts，金额解析唯一实现  # noqa: E402
 from db import (init_db, upsert_brand, upsert_country, upsert_model,  # noqa: E402
@@ -1478,7 +1480,34 @@ async def run_all(only_brand=None, only_country=None, concurrency=None, force=Fa
                     await asyncio.wait_for(_closer, timeout=_CLOSE_TIMEOUT)
                 except Exception:
                     pass
+    _apply_reference_fallback(quarter, only_brand, only_country)
     print("[finish] 抓取结束，数据已落 spare_parts.db", flush=True)
+
+
+def _apply_reference_fallback(quarter, only_brand=None, only_country=None):
+    """抓取收尾：给"本季官方没给本地价"的机型补 CN 官方参考价（B 方案，2026-09-23）。
+
+    为什么放在抓取之后：OPPO 各区 getProduct 只返回在售精选机型，已下架老机型每季都会被
+    判为"本地无价"且永不重访。用同一轮已落库的 CN 官方价补"参考价"，矩阵才不会长期空洞。
+    纯 DB 操作（不发网络请求）、幂等、失败只告警——**绝不**影响已完成的抓取结果。
+    """
+    for brand, regions in CN_REFERENCE_REGIONS.items():
+        if only_brand and brand != only_brand:
+            continue
+        ccs = [cc for cc in regions if not (only_country and cc != only_country)]
+        if not ccs:
+            continue
+        try:
+            st = apply_cn_reference(quarter, brand=brand, regions=ccs)
+            print(format_stats(st), flush=True)
+            for cc, d in st["regions"].items():
+                if d["models"]:
+                    print(f"  [reference] {brand}/{cc}: 补 {d['models']} 台机型 / "
+                          f"{d['snapshots']} 条 CN 参考价（is_reference=1，不参与本地价差）",
+                          flush=True)
+        except Exception as e:
+            print(f"  [reference] {brand} 参考价兜底失败（不影响抓取结果）："
+                  f"{type(e).__name__}: {str(e)[:150]}", flush=True)
 
 
 def main():

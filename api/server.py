@@ -388,6 +388,7 @@ def api_model_compare(brand=None, base_model=None, model=None, spec=None, color=
                   ps.material_fee, ps.labor_fee, ps.source_url, ps.tax_included, ps.captured_at,
                   ps.has_labor_split, ps.labor_note, ps.labor_source_url, ps.is_seed,
                   ps.rate_source, ps.rate_as_of, ps.source_url_kind,
+                  ps.is_reference, ps.reference_region,
                   m.name model_name, m.model_url, m.model_url_kind, m.model_url_locator,
                   m.model_url_verified, m.model_page_url
            FROM price_snapshots ps
@@ -446,6 +447,9 @@ def api_model_compare(brand=None, base_model=None, model=None, spec=None, color=
                 "rate_source": r["rate_source"], "rate_as_of": r["rate_as_of"],
                 # —— 机型级取证链接（一机一链）：前端只展示 model_url_verified=1 的为"本机型精确链接"
                 "source_url_kind": r["source_url_kind"],
+                # —— 参考价标记（B 方案）：is_reference=1 表示借用同机型 CN 官方价，
+                # 非本地官方价，前端须明确标注、不计入本地价差放大
+                "is_reference": r["is_reference"], "reference_region": r["reference_region"],
                 "model_name": r["model_name"], "model_url": r["model_url"],
                 "model_url_kind": r["model_url_kind"],
                 "model_url_locator": r["model_url_locator"],
@@ -533,6 +537,7 @@ def api_price_history(brand=None, base_model=None, cat=None, spec=None, color=No
                   ps.tax_included, ps.captured_at,
                   ps.has_labor_split, ps.labor_note, ps.labor_source_url, ps.is_seed,
                   ps.rate_source, ps.rate_as_of, ps.source_url_kind,
+                  ps.is_reference, ps.reference_region,
                   m.name model_name, COALESCE(m.category,'phone') model_category,
                   m.model_url, m.model_url_kind,
                   m.model_url_locator, m.model_url_verified, m.model_page_url
@@ -570,6 +575,7 @@ def api_price_history(brand=None, base_model=None, cat=None, spec=None, color=No
             "labor_source_url": r["labor_source_url"], "is_seed": r["is_seed"],
             "rate_source": r["rate_source"], "rate_as_of": r["rate_as_of"],
             "source_url_kind": r["source_url_kind"],
+            "is_reference": r["is_reference"], "reference_region": r["reference_region"],
             "model_name": r["model_name"], "model_category": r["model_category"],
             "model_url": r["model_url"],
             "model_url_kind": r["model_url_kind"],

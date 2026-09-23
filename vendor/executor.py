@@ -1366,7 +1366,17 @@ async def run_query(page, query, model, part, country="de"):
                     if low in (x.get("marketingModelName") or "").lower():
                         target = x
                         break
-        target = target or (plist[0] if plist else None)
+        if target is None:
+            if model:
+                # 显式指定了机型却在本地在售表里找不到（多为已下架老机型）：
+                # **绝不能**退回 plist[0]——那会把"别的机型的价格"写进这台机型名下（张冠李戴），
+                # 且因为数字"看起来正常"而极难被发现。如实报"本地无此机型"。
+                # 跨区 CN 参考价由 crawler/reference_prices.py 在季度抓取收尾统一补
+                # （is_reference=1，前端灰标"参考·中国"），此处不重复造第二条写入路径。
+                return [{"cells": [f"ERROR: {model} 不在 {cc} 在售机型表内"
+                                   f"（getProduct 无此机型，官方本地无价）"],
+                         "price": None, "model": model}]
+            target = plist[0] if plist else None
         if not target:
             return [{"cells": ["ERROR: 未从 getProduct 取到任何机型"], "price": None}]
         mdl = target.get("marketingModelName")

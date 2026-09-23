@@ -593,6 +593,14 @@
     const cav = brandCaveat(d.brand);
     if (cav)
       html += '<div class="hint warn">⚠️ ' + esc(cav) + '</div>';
+    // 参考价（B 方案）说明——只在真的出现参考价时展示，避免无谓噪音
+    const hasRef = (d.groups || []).some(g => (g.parts || []).some(p =>
+      Object.values(p.prices || {}).some(pc => pc.is_reference === 1)));
+    if (hasRef)
+      html += '<div class="hint"><b>参考·中国</b>（灰底 + 紫虚线）= 该机型在本地官方<b>查无备件价</b>'
+        + '（OPPO 各区官网只公布在售机型的价目；已下架机型当地无价，这<b>不是</b>抓取失败）。'
+        + '此处借用<b>同机型 OPPO 中国官网价（CNY）</b>作参考，<b>非当地官方价</b>：'
+        + '灰色单元格不参与"最低国 / 最高国 / 价差"的本地价差归因。</div>';
     groups.forEach(g => {
       const specLabel = g.spec || "未注明";
       const colorLabel = g.color || "未注明";
@@ -608,7 +616,15 @@
         const vals = countries.map(c => (p.prices[c] && p.prices[c].cny != null) ? p.prices[c].cny : null);
         const valid = vals.filter(v => v != null);
         if (!valid.length) return;
-        const lo = Math.min(...valid), hi = Math.max(...valid), span = (hi - lo) || 1;
+        // 参考价（is_reference=1）不是当地官方价，**不得**参与"最低国/最高国/价差"的归属与排序：
+        // 否则会把"德国"标成最低价国 —— 实际德国根本没有本地报价，那个数字只是 CN 价的回显。
+        // 故低/高基准优先取"真实本地价"国家；若某行全是参考价（该配置在 CN 无对应规格/颜色），
+        // 则退化为全部值，且不归属任何国家（loC/hiC 保持空）。
+        const realVals = countries
+          .map((c, i) => (vals[i] != null && p.prices[c].is_reference !== 1) ? vals[i] : null)
+          .filter(v => v != null);
+        const basis = realVals.length ? realVals : valid;
+        const lo = Math.min(...basis), hi = Math.max(...basis), span = (hi - lo) || 1;
         // 行标签必须带上「规格」。同一备件会按存储规格拆成多行（8G+128G / 8G+256G /
         // 12G+256G / 12G+512G），这是分组键 (品类,件名,规格) 的正确行为——数据没错；
         // 但若行标签只画 cat+part，五行主板会全部渲染成「主板 / 主板」，看起来像重复行。
@@ -621,7 +637,11 @@
         countries.forEach((c, i) => {
           const v = vals[i];
           if (v == null) { html += '<td class="muted">—</td>'; return; }
-          if (v === lo) loC = cn(c); if (v === hi) hiC = cn(c);
+          // 参考价不认领"最低国/最高国"（它不是当地官方价，见上方 lo/hi 基准说明）
+          if (p.prices[c].is_reference !== 1) {
+            if (v === lo) loC = cn(c);
+            if (v === hi) hiC = cn(c);
+          }
           const t = (v - lo) / span;
           const pc = p.prices[c];
           const cur = pc.currency, raw = pc.price;
@@ -663,7 +683,14 @@
           // 把本来正确的跨区域数据也显得像脏数据。原币价改用 ≈ 跟随其后。
           const isCny = (cur === "CNY");
           const oriTxt = isCny ? "" : ` ≈ ${fmt(raw, 2)} ${esc(cur)}`;
-          html += `<td class="cell-click" style="background:${heatColor(t)}" title="${esc(tip)}" ${oc}>${fmt(v)}<br><small class="muted">CNY${oriTxt}${src}${nosplit}${seedBadge}</small>${laborBadge}${bandMark}</td>`;
+          // 参考价（B 方案）：本地官方无价，借用同机型 OPPO 中国官网价（CNY）。
+          // 必须明确标注、且底色用灰色（不走热力色），避免被误读为"真实本地价排名"。
+          const isRef = (pc.is_reference === 1);
+          const refBadge = isRef
+            ? ' <sup class="ref" title="参考价：本地官方未提供该机型备件价，借用同机型 OPPO 中国官网价（CNY），非本地官方价，不参与本地价差归因">参考·中国</sup>'
+            : "";
+          const bg = isRef ? "#f1f5f9" : heatColor(t);
+          html += `<td class="cell-click${isRef ? " ref-cell" : ""}" style="background:${bg}" title="${esc(tip)}" ${oc}>${fmt(v)}<br><small class="muted">CNY${oriTxt}${refBadge}${src}${nosplit}${seedBadge}</small>${laborBadge}${bandMark}</td>`;
         });
         const diff = lo ? Math.round((hi - lo) / lo * 100) : 0;
         html += `<td>${esc(loC)}</td><td>${esc(hiC)}</td><td>${diff > 0 ? "+" + diff + "%" : "—"}</td></tr>`;

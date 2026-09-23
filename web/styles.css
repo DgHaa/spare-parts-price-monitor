@@ -25,6 +25,11 @@ body{font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif
 .hint.warn{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412}
 .nosplit{color:var(--red);font-weight:700;cursor:help;margin-left:1px}
 .seed{color:#7c3aed;font-weight:700;font-size:10px;cursor:help;margin-left:2px;vertical-align:super}
+/* 参考价（B 方案）：本地官方无价，借用同机型 OPPO 中国官网价（CNY）。
+   紫色虚线徽标 + 灰色单元格，与官方价（热力色）明确区分，防止误读为本地官方价。 */
+.ref{color:#7c3aed;font-weight:700;font-size:10px;cursor:help;margin-left:2px;
+  vertical-align:super;border:1px dashed #c4b5fd;border-radius:4px;padding:0 3px}
+.ref-cell{outline:1px dashed #c4b5fd;outline-offset:-3px}
 /* 「档位定价」标记：该价格是多个不同备件共用的档位价，非该零件单独成本价 */
 .band{color:#0369a1;font-weight:700;font-size:10px;cursor:help;margin-left:3px;
   vertical-align:super;border-bottom:1px dotted currentColor}

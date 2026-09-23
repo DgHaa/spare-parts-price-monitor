@@ -102,6 +102,10 @@ CREATE TABLE IF NOT EXISTS price_snapshots (
   rate_source TEXT,               -- 汇率来源：live:<endpoint> / static(legacy) / static
   rate_as_of TEXT,                -- 汇率时点(ISO)，用于折算可信度标注
   source_url_kind TEXT,           -- 该行 source_url 的粒度：见 models.model_url_kind
+  -- 参考价（B 方案，2026-09-23）：本地官方无价时，借用同机型 CN 官方价填充，
+  -- 必须明确标注、绝不参与本地价差放大。
+  is_reference INTEGER DEFAULT 0, -- 1=参考价（非本地官方价）；0=本地官方抓取
+  reference_region TEXT,          -- 参考价来源区域（如 'cn'）；本地官方价则为 NULL
   UNIQUE(part_id, quarter)
 );
 CREATE TABLE IF NOT EXISTS third_party_prices (
@@ -237,7 +241,9 @@ def init_db():
     # P1-1 人工费取证字段（类型需与 SCHEMA CREATE 对齐）
     for col, typ in (("has_labor_split", "INTEGER"), ("is_seed", "INTEGER DEFAULT 0"),
                      ("labor_note", "TEXT"), ("labor_source_url", "TEXT"),
-                     ("rate_source", "TEXT"), ("rate_as_of", "TEXT")):
+                     ("rate_source", "TEXT"), ("rate_as_of", "TEXT"),
+                     ("is_reference", "INTEGER DEFAULT 0"),
+                     ("reference_region", "TEXT")):
         try:
             conn.execute(f"ALTER TABLE price_snapshots ADD COLUMN {col} {typ}")
         except Exception:
@@ -617,7 +623,7 @@ def insert_snapshot(part_id, quarter, price, currency, cny_price,
                     material_fee=None, labor_fee=None, source_url="", captured_at=None, tax_included=None,
                     labor_note=None, labor_source_url=None, has_labor_split=None,
                     is_seed=0, rate_source=None, rate_as_of=None, conn=None,
-                    source_url_kind=None):
+                    source_url_kind=None, is_reference=0, reference_region=None):
     """写入一条备件价格快照。
 
     labor_note / labor_source_url / has_labor_split：人工费取证（P1-1）。
@@ -626,15 +632,18 @@ def insert_snapshot(part_id, quarter, price, currency, cny_price,
     is_seed：1=演示/种子数据；0=真实抓取（P1-2）。
     rate_source / rate_as_of：折算所用汇率来源与时点（P0-2）。
     source_url_kind：source_url 的粒度（model_api / model_text_fragment / model_page /
-      category_api_locator / brand_entry）。前端据此如实标注"这条价格的链接是否精确到本机型"。
+      category_api_locator / brand_entry / reference_cn）。前端据此如实标注"这条价格的链接是否精确到本机型"。
+    is_reference / reference_region（B 方案，2026-09-23）：is_reference=1 表示这不是本地官方价，
+      而是借用 reference_region（如 'cn'）同机型的官方价作参考。前端必须显式标注、
+      且**不参与本地价差归因**（其 cny_price 等于参考区原值，天然不会制造假价差）。
     """
     own = conn is None
     c = conn or get_conn()
     c.execute("""INSERT INTO price_snapshots(part_id, quarter, price, currency, cny_price,
                     material_fee, labor_fee, source_url, captured_at, tax_included,
                     has_labor_split, labor_note, labor_source_url, is_seed, rate_source, rate_as_of,
-                    source_url_kind)
-                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    source_url_kind, is_reference, reference_region)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(part_id, quarter) DO UPDATE SET
                      price=excluded.price, currency=excluded.currency, cny_price=excluded.cny_price,
                      material_fee=excluded.material_fee, labor_fee=excluded.labor_fee,
@@ -643,11 +652,12 @@ def insert_snapshot(part_id, quarter, price, currency, cny_price,
                      has_labor_split=excluded.has_labor_split, labor_note=excluded.labor_note,
                      labor_source_url=excluded.labor_source_url, is_seed=excluded.is_seed,
                      rate_source=excluded.rate_source, rate_as_of=excluded.rate_as_of,
-                     source_url_kind=excluded.source_url_kind""",
+                     source_url_kind=excluded.source_url_kind,
+                     is_reference=excluded.is_reference, reference_region=excluded.reference_region""",
                  (part_id, quarter, price, currency, cny_price, material_fee, labor_fee,
                   source_url, captured_at or datetime.now().isoformat(timespec="seconds"), tax_included,
                   has_labor_split, labor_note, labor_source_url, is_seed, rate_source, rate_as_of,
-                  source_url_kind))
+                  source_url_kind, int(is_reference or 0), reference_region))
     if own:
         c.commit(); c.close()
 
