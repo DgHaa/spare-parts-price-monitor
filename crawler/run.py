@@ -31,7 +31,10 @@ from db import (init_db, upsert_brand, upsert_country, upsert_model,  # noqa: E4
                 upsert_part, insert_snapshot, this_quarter, get_rate, get_rate_meta, fetch_rates,
                 model_already_captured, captured_model_keys, log_run, add_issue,
                 normalize_base_model, extract_spec, extract_color, classify_tier,
-                get_conn)
+                get_conn,
+                STATUS_SUCCESS, STATUS_PARTIAL, STATUS_FAILED,
+                STATUS_RESUMED, STATUS_UNAVAILABLE, STATUS_SKIPPED,
+                summarize_status)
 
 # 抓取范围（全量设计）：models=None 表示尽量自动发现全部机型。
 # 华为国内外友商 5 家全覆盖（apple / oppo / samsung / vivo / xiaomi）。
@@ -83,8 +86,8 @@ def _ever_succeeded(brand: str, country: str) -> bool:
         con = get_conn()
         try:
             row = con.execute(
-                "SELECT 1 FROM run_logs WHERE brand=? AND country=? AND status='success' LIMIT 1",
-                (brand, country)).fetchone()
+                "SELECT 1 FROM run_logs WHERE brand=? AND country=? AND status=? LIMIT 1",
+                (brand, country, STATUS_SUCCESS)).fetchone()
             return row is not None
         finally:
             con.close()
@@ -1071,7 +1074,7 @@ async def crawl_brand_country(browser, brand, country, country_name, models_seed
     """
     started = datetime.now().isoformat(timespec="seconds")
     rows_total = 0
-    status = "success"
+    status = STATUS_SUCCESS
     err = None
     anomaly = 0
     reason = ""
@@ -1091,11 +1094,13 @@ async def crawl_brand_country(browser, brand, country, country_name, models_seed
     if not rec:
         print(f"[skip] {brand}/{country} 无 KB 记录", flush=True)
         _log_run(brand, country, quarter, started, datetime.now().isoformat(timespec="seconds"),
-                "skipped", 0, "无 KB 记录")
+                STATUS_SKIPPED, 0, "无 KB 记录")
         logged = True
         # P2 异常可视化：无 KB / blocked / 0 机型等「抓不到」一律写入待修队列（报错，不静默）
         add_issue(brand, country, "无 KB 抓取配置（未收录该品牌/国家）")
-        return ("skipped", 0, "无 KB 抓取配置（未收录该品牌/国家）")
+        return (STATUS_SKIPPED, 0, "无 KB 抓取配置（未收录该品牌/国家）")
+    # 注意：此处的 "blocked"/"unavailable" 是 **KB 配方的 status**，与 db.STATUS_* 是两套
+    # 不同词汇表（只是取值恰好同名），勿改为常量引用——否则会把两个语义耦合在一起。
     if rec.get("status") in ("blocked", "unavailable"):
         st = rec.get("status")
         print(f"[skip] {brand}/{country} 状态={st}（需真机/代理或官网无工具）", flush=True)
@@ -1103,7 +1108,7 @@ async def crawl_brand_country(browser, brand, country, country_name, models_seed
         # 需真机代理），与「断点续跑：本季已抓」是两回事，原先都记 skipped，事后无法
         # 区分「正常续跑」与「该区域根本没数据」。现分别记为 unavailable / resumed。
         _log_run(brand, country, quarter, started, datetime.now().isoformat(timespec="seconds"),
-                "unavailable", 0, st)
+                STATUS_UNAVAILABLE, 0, st)
         logged = True
         # 2026-09-22：环境性限制不再建工单。KB 标 blocked/unavailable 是**人工研判过的环境结论**
         # （本机无出口代理 / 官网无公开备件价工具），不是抓取代码的缺陷——每 6h 触发的自愈 Agent
@@ -1113,7 +1118,7 @@ async def crawl_brand_country(browser, brand, country, country_name, models_seed
         if _ever_succeeded(brand, country):
             add_issue(brand, country,
                       f"KB 状态={st}，但该区域曾有成功记录 → 疑似回归（曾可用→退化），需排查")
-        return ("unavailable", 0, st)
+        return (STATUS_UNAVAILABLE, 0, st)
     # samsung_api：服务端 HTTP 直采（DE=seg.apix.de REST / MY=Azure 估价 API），无需浏览器/Playwright
     if rec.get("query", {}).get("mode") == "samsung_api":
         # samsung_api 是**同步**实现（urllib + time.sleep），必须丢线程池：直接在协程里
@@ -1162,17 +1167,17 @@ async def crawl_brand_country(browser, brand, country, country_name, models_seed
                           flush=True)
                     _log_run(brand, country, quarter, started,
                             datetime.now().isoformat(timespec="seconds"),
-                            "failed", 0, f"浏览器启动失败: {e}")
+                            STATUS_FAILED, 0, f"浏览器启动失败: {e}")
                     logged = True
                     add_issue(brand, country, f"浏览器启动失败: {e}")
-                    return ("failed", 0, f"浏览器启动失败: {e}")
+                    return (STATUS_FAILED, 0, f"浏览器启动失败: {e}")
                 print(f"  [warn] {brand}/{country} 独立浏览器启动失败，回退共享浏览器: {e}", flush=True)
         try:
             page = await open_page(use_browser, rec, goto_url=goto_url)
         except Exception as e:
             print(f"  [error] {brand}/{country} 打开页面失败: {e}", flush=True)
             _log_run(brand, country, quarter, started, datetime.now().isoformat(timespec="seconds"),
-                    "failed", 0, f"页面打开失败: {e}")
+                    STATUS_FAILED, 0, f"页面打开失败: {e}")
             logged = True
             add_issue(brand, country, f"页面打开失败（可能网络不可达/被墙）: {e}")
             for _c in ([own_browser.close()] if own_browser else []) + ([own_pw.stop()] if own_pw else []):
@@ -1180,7 +1185,7 @@ async def crawl_brand_country(browser, brand, country, country_name, models_seed
                     await asyncio.wait_for(_c, timeout=_CLOSE_TIMEOUT)
                 except Exception:
                     pass
-            return ("failed", 0, f"页面打开失败: {e}")
+            return (STATUS_FAILED, 0, f"页面打开失败: {e}")
     try:
         mode = rec.get("query", {}).get("mode")
         bid = upsert_brand(brand, mode)
@@ -1225,19 +1230,19 @@ async def crawl_brand_country(browser, brand, country, country_name, models_seed
             if not discovered:
                 st = api_stats
                 if not st.get("total"):
-                    status = "failed"; anomaly = 1
+                    status = STATUS_FAILED; anomaly = 1
                     reason = "API 未返回机型列表：端点/参数可能变更或被限流"
                 elif st.get("skipped") == st["total"]:
                     # 全部机型本季已抓 → 断点续跑的**正常跳过**，绝不能当失败写待修队列
                     # （改造前 discover 会返回 10 台再被逐台跳过，故不会走到这里；
                     #  加了前置过滤后 discover 返回空，必须在调用方区分这两种"空"）。
                     # 2026-09-23：独立为 resumed，与"官方无价可抓"（unavailable）区分开。
-                    status = "resumed"
+                    status = STATUS_RESUMED
                     reason = (f"断点续跑：本季 {st['skipped']} 台机型均已抓取，"
                               f"本轮无新增价行")
                 elif st.get("errored"):
                     # 请求层确实失败了（urllib 报错/异常）→ 才可能是端点变更或限流
-                    status = "failed"; anomaly = 1
+                    status = STATUS_FAILED; anomaly = 1
                     reason = (f"取价请求失败 {st['errored']}/{st.get('attempted', 0)} 台："
                               f"端点/参数可能变更或被限流")
                 else:
@@ -1247,7 +1252,7 @@ async def crawl_brand_country(browser, brand, country, country_name, models_seed
                     # 则每次续跑都会误报一条（实测 oppo/cn 首次踩中，见 §16.4）。
                     # 2026-09-23：归入 unavailable（官方无价可抓），不再与"未收录"混记 skipped；
                     # 与 KB 级 unavailable 的差别体现在 reason 文案上（机型级 vs 区域级）。
-                    status = "unavailable"
+                    status = STATUS_UNAVAILABLE
                     reason = (f"本轮尝试 {st.get('attempted', 0)} 台机型，"
                               f"官方均未公布备件价（接口正常返回但无价表）")
             for m, rows, detail_url in discovered:
@@ -1277,11 +1282,11 @@ async def crawl_brand_country(browser, brand, country, country_name, models_seed
                     #   本季数据整块缺失，而 run_log 看起来只是"跳过"）。
                     # 按 failed + anomaly 如实上报，不再伪装成"正常跳过"。
                     _log_run(brand, country, quarter, started, datetime.now().isoformat(timespec="seconds"),
-                            "failed", 0, _reason, 1, _reason)
+                            STATUS_FAILED, 0, _reason, 1, _reason)
                     logged = True
                     add_issue(brand, country, _reason)
                     await page.close()
-                    return ("failed", 0, _reason)
+                    return (STATUS_FAILED, 0, _reason)
             for m in models:
                 if not force and model_already_captured(bid, country, m, quarter):
                     continue
@@ -1297,21 +1302,21 @@ async def crawl_brand_country(browser, brand, country, country_name, models_seed
                 await page.wait_for_timeout(800)  # 限速，礼貌
         print(f"[done] {brand}/{country} 本季新增 {done} 机型 / {rows_total} 条价", flush=True)
         # 异常启发式（诚实上报）：断点续跑全跳过不算异常；其余失败如实标记。
-        if status == "success":
+        if status == STATUS_SUCCESS:
             if attempted == 0:
                 # 本季机型此前已全部抓取，本轮无新增 —— 不是失败，但也不能误标"成功产出"。
                 # 2026-09-23 拆为独立状态 resumed：与 unavailable（官网不提供）语义不同，
                 # 混记 skipped 会让覆盖度审计分不清"正常续跑"与"该区域根本没数据"。
-                status = "resumed"
+                status = STATUS_RESUMED
                 reason = "断点续跑：本季机型均已抓取，本轮无新增价行"
             elif rows_total == 0:
-                status = "failed"
+                status = STATUS_FAILED
                 anomaly = 1
                 ab = await detect_antibot(page)
                 reason = ab or "尝试抽取 0 行：疑似选择器失效 / 页面改版 / 反爬"
             elif zero_models > 0:
                 # 部分机型抽到了价、部分 0 行 —— 部分失败，待修队列会据此建工单
-                status = "partial"
+                status = STATUS_PARTIAL
                 anomaly = 1
                 reason = (f"部分机型抓取失败：{zero_models}/{attempted} 个机型抽取 0 行"
                           f"（其余 {attempted - zero_models} 个成功）；可能部分选择器失效 / SKU 改版")
@@ -1332,7 +1337,7 @@ async def crawl_brand_country(browser, brand, country, country_name, models_seed
         # 把本该 success 的区域误标成 partial 并写待修工单（2026-09-17 首次跑新路径踩到）。
         # vivo_api 与 xiaomi_api 完全同构（同为 model_api 级 detail_url + 无浏览器池），
         # 一并排除，否则会重演同一个 AttributeError。
-        if (status in ("success", "partial") and rows_total > 0
+        if (status in (STATUS_SUCCESS, STATUS_PARTIAL) and rows_total > 0
                 and mode not in ("api_reborn", "xiaomi_api", "vivo_api")):
             try:
                 rep = await backfill_links(use_browser or browser, brand, country)
@@ -1345,7 +1350,7 @@ async def crawl_brand_country(browser, brand, country, country_name, models_seed
                     n_total = sub.get("n_models", 0) or 0
                     n_ok = sub.get("n_verified", 0) or 0
                     if n_total and n_ok == 0:
-                        status = "partial" if status == "success" else status
+                        status = STATUS_PARTIAL if status == STATUS_SUCCESS else status
                         anomaly = 1
                         r2 = (f"机型级取证链接生成失败：0/{n_total} 通过校验"
                               f"（价格已抓，但无法定位到本机型官方链接）")
@@ -1353,12 +1358,12 @@ async def crawl_brand_country(browser, brand, country, country_name, models_seed
             except Exception as e:
                 print(f"  [links][warn] {brand}/{country} 机型级链接回填异常："
                       f"{type(e).__name__}: {str(e)[:160]}", flush=True)
-                status = "partial" if status == "success" else status
+                status = STATUS_PARTIAL if status == STATUS_SUCCESS else status
                 anomaly = 1
                 r2 = f"机型级取证链接回填异常：{type(e).__name__}: {str(e)[:160]}"
                 reason = (reason + "；" if reason else "") + r2
     except Exception as e:
-        status = "failed"
+        status = STATUS_FAILED
         anomaly = 1
         err = str(e)[:500]
         reason = f"运行时异常：{str(e)[:200]}"
@@ -1423,27 +1428,18 @@ async def crawl_brand_country_all(browser, brand, country, country_name, models_
             browser, brand, country, country_name, models_seed, quarter,
             isolate=isolate, force=force, rec_in=r, write_log=False)
         rows_total += (n or 0)
-        statuses.append(st or "success")
+        statuses.append(st or STATUS_SUCCESS)
         if reason:
             reasons.append(f"{cat}: {reason}")
     # 汇总优先级（2026-09-23 随状态语义拆分更新）：
     #   failed > partial > success > resumed > unavailable > skipped
     # 即"有坏消息先报坏消息；有好消息就报好消息；都没有才报中性的续跑/不可用"。
     # 混记 resumed+unavailable 时取 resumed（说明该区域确有数据在跑，信息量更大）。
-    if "failed" in statuses:
-        status = "failed"
-    elif "partial" in statuses:
-        status = "partial"
-    elif "success" in statuses:
-        status = "success"
-    elif "resumed" in statuses:
-        status = "resumed"
-    elif all(s == "unavailable" for s in statuses):
-        status = "unavailable"
-    else:
-        status = "skipped"
+    # 实现已提取到 db.summarize_status（由 db.STATUS_PRIORITY 单源驱动），
+    # 避免此处 if/elif 与状态常量集合各写一份而漂移。
+    status = summarize_status(statuses)
     reason = "；".join(reasons)
-    anomaly = 1 if status in ("failed", "partial") else 0
+    anomaly = 1 if status in (STATUS_FAILED, STATUS_PARTIAL) else 0
     log_run(brand, country, quarter, started, datetime.now().isoformat(timespec="seconds"),
             status, rows_total, "", anomaly, reason)
     if anomaly:
@@ -1464,6 +1460,7 @@ def _job_needs_browser(brand, country):
         rec = executor.load_record(brand, country)
     except Exception:
         return True
+    # 同上：KB 配方 status，非 run_logs.status（见 _job_needs_browser 开头注释）。
     if not rec or rec.get("status") in ("blocked", "unavailable"):
         return False
     q = rec.get("query") or {}

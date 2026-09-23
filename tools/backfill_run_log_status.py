@@ -40,10 +40,14 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "vendor"))
 sys.path.insert(0, str(ROOT))
 
+from db import STATUS_RESUMED, STATUS_SKIPPED, STATUS_UNAVAILABLE  # noqa: E402
+
 DB = ROOT / "spare_parts.db"
 BACKUP_DIR = ROOT / "backups"
 
-UNAVAILABLE = ("blocked", "unavailable")
+# ⚠️ 这是 **KB 配方的 status**，与 db.STATUS_*（run_logs.status）是两套不同词汇表，
+# 取值只是恰好同名。勿合并——否则会把"官网不提供"与"KB 标记不可用"两个语义耦合。
+KB_NOT_AVAILABLE = ("blocked", "unavailable")
 
 
 def kb_region_unavailable(brand: str, country: str) -> bool:
@@ -56,7 +60,7 @@ def kb_region_unavailable(brand: str, country: str) -> bool:
     if not recs:
         return False
     st = {r.get("status") for r in recs}
-    return bool(st) and st <= set(UNAVAILABLE)
+    return bool(st) and st <= set(KB_NOT_AVAILABLE)
 
 
 def plan(con: sqlite3.Connection):
@@ -64,7 +68,8 @@ def plan(con: sqlite3.Connection):
     con.row_factory = sqlite3.Row
     rows = con.execute(
         "SELECT id, brand, country, quarter, rows_written, error_text "
-        "FROM run_logs WHERE status='skipped' ORDER BY brand, country, id").fetchall()
+        "FROM run_logs WHERE status=? ORDER BY brand, country, id",
+        (STATUS_SKIPPED,)).fetchall()
 
     out = []
     # 缓存，避免同一 brand×country 反复查库/读 KB
@@ -77,7 +82,8 @@ def plan(con: sqlite3.Connection):
             unav_cache[key] = kb_region_unavailable(r["brand"], r["country"])
         if unav_cache[key]:
             out.append((r["id"], r["brand"], r["country"], r["quarter"],
-                        "skipped", "unavailable", "KB 研判该区域官网不提供备件价"))
+                        STATUS_SKIPPED, STATUS_UNAVAILABLE,
+                        "KB 研判该区域官网不提供备件价"))
             continue
 
         pkey = (r["brand"], r["country"], r["quarter"])
@@ -91,7 +97,7 @@ def plan(con: sqlite3.Connection):
                 (r["brand"], r["country"], r["quarter"])).fetchone()[0]
         if hasprice_cache[pkey] > 0:
             out.append((r["id"], r["brand"], r["country"], r["quarter"],
-                        "skipped", "resumed",
+                        STATUS_SKIPPED, STATUS_RESUMED,
                         f"该季度已有 {hasprice_cache[pkey]} 条价行 → 属断点续跑"))
         # 其余保持 skipped（未收录 / 判不出来），不动
     return out
@@ -110,7 +116,7 @@ def main() -> int:
     con = sqlite3.connect(args.db)
     changes = plan(con)
     total_skipped = con.execute(
-        "SELECT COUNT(*) FROM run_logs WHERE status='skipped'").fetchone()[0]
+        "SELECT COUNT(*) FROM run_logs WHERE status=?", (STATUS_SKIPPED,)).fetchone()[0]
     before_dist = con.execute(
         "SELECT status, COUNT(*) FROM run_logs GROUP BY status ORDER BY status").fetchall()
     con.close()
@@ -156,8 +162,8 @@ def main() -> int:
     try:
         with con:
             for _id, _b, _c, _q, _o, new, _w in changes:
-                con.execute("UPDATE run_logs SET status=? WHERE id=? AND status='skipped'",
-                            (new, _id))
+                con.execute("UPDATE run_logs SET status=? WHERE id=? AND status=?",
+                            (new, _id, STATUS_SKIPPED))
         # 复核
         left = con.execute("SELECT status, COUNT(*) FROM run_logs GROUP BY status").fetchall()
     finally:

@@ -8,6 +8,8 @@
   2) 多品类汇总优先级                → failed > partial > success > resumed > unavailable > skipped
   3) 「自动发现 0 机型」             → failed 且 anomaly_flag=1（原先误记 skipped + anomaly=0）
   4) 纯 unavailable 的多品类区域     → unavailable（不再退化成 skipped）
+  5) 状态词汇表加固                  → VALID_STATUSES 六值；log_run 拦非法值且不落库；
+                                       summarize_status 边界；巡检白名单能抓非法、不误报合法
 
 用法：python tools/test_run_log_status.py        # 全绿 exit 0，否则 exit 1
 """
@@ -140,6 +142,80 @@ def main() -> int:
     con.close()
     check("unavailable 区域 status", r["status"], "unavailable")
     check("unavailable 区域 anomaly_flag", r["anomaly_flag"], 0)
+
+    # ---- 5) 状态词汇表加固（应用层枚举 + 写入口断言 + 巡检兜底）------------
+    print("\n[5] 状态词汇表加固")
+    check("VALID_STATUSES 数量", len(db.VALID_STATUSES), 6)
+    check("VALID_STATUSES 内容", set(db.VALID_STATUSES),
+          {"success", "partial", "failed", "resumed", "unavailable", "skipped"})
+    check("STATUS_PRIORITY 与 VALID_STATUSES 等集",
+          set(db.STATUS_PRIORITY), set(db.VALID_STATUSES))
+    check("NEUTRAL_STATUSES ⊆ VALID_STATUSES",
+          set(db.NEUTRAL_STATUSES) <= set(db.VALID_STATUSES), True)
+
+    # 5a) 合法值一律放行
+    for s in sorted(db.VALID_STATUSES):
+        try:
+            db.validate_status(s)
+            ok = True
+        except ValueError:
+            ok = False
+        check(f"validate_status({s!r}) 放行", ok, True)
+
+    # 5b) 非法值必须抛 ValueError（fail fast）；能纠错时给出提示
+    for bad, hint in [("succes", "success"), ("Success", "success"),
+                      ("resummed", "resumed"), ("", None), (None, None)]:
+        try:
+            db.validate_status(bad)
+            check(f"validate_status({bad!r}) 抛 ValueError", False, True)
+        except ValueError as e:
+            check(f"validate_status({bad!r}) 抛 ValueError", True, True)
+            if hint:
+                check(f"  纠错提示含 {hint!r}", hint in str(e), True)
+
+    # 5c) log_run 是 run_logs 唯一写入口：非法状态必须在此拦下，且不落库
+    con = sqlite3.connect(str(db.DB_PATH))
+    before = con.execute("SELECT COUNT(*) FROM run_logs").fetchone()[0]
+    try:
+        db.log_run("__vocab__", "cn", quarter, "t0", "t1", "succes", 0)
+        check("log_run 非法状态被拦截", False, True)
+    except ValueError as e:
+        check("log_run 非法状态被拦截", True, True)
+        check("  异常信息含『非法 run_logs.status』", "非法 run_logs.status" in str(e), True)
+    after = con.execute("SELECT COUNT(*) FROM run_logs").fetchone()[0]
+    check("非法写入未落库（行数不变）", after, before)
+    # 合法值仍可正常写入
+    db.log_run("__vocab__", "cn", quarter, "t0", "t1", db.STATUS_RESUMED, 0)
+    row = con.execute("SELECT status FROM run_logs WHERE brand='__vocab__'").fetchone()
+    check("合法状态正常落库", row[0], db.STATUS_RESUMED)
+    con.close()
+
+    # 5d) summarize_status 边界语义
+    check("summarize_status([]) 回退默认", db.summarize_status([]), db.STATUS_SKIPPED)
+    check("全 unavailable → unavailable",
+          db.summarize_status([db.STATUS_UNAVAILABLE] * 3), db.STATUS_UNAVAILABLE)
+    check("unavailable+skipped 混合 → skipped（不把缺口说成『对方不提供』）",
+          db.summarize_status([db.STATUS_UNAVAILABLE, db.STATUS_SKIPPED]), db.STATUS_SKIPPED)
+
+    # 5e) 巡检白名单 = 软约束的可观测兜底：能抓非法、且不误报合法
+    sys.path.insert(0, str(ROOT / "tools"))
+    import verify_quarterly_run as V  # noqa: E402
+    con = sqlite3.connect(str(db.DB_PATH))
+    con.row_factory = sqlite3.Row
+    con.execute("UPDATE run_logs SET status='succes' WHERE brand='__vocab__'")
+    con.commit()
+    rep_bad = V.Report()
+    V.check_status_vocabulary(con, rep_bad)
+    check("巡检捕获非法状态", any(c == "STATUS_INVALID" for _, c, _ in rep_bad.rows), True)
+    check("巡检判为 ERROR（非仅 WARN）", rep_bad.has_error(), True)
+
+    con.execute("UPDATE run_logs SET status=? WHERE brand='__vocab__'", (db.STATUS_RESUMED,))
+    con.commit()
+    rep_ok = V.Report()
+    V.check_status_vocabulary(con, rep_ok)
+    check("合法数据巡检通过（无 STATUS_INVALID 误报）",
+          any(c == "STATUS_INVALID" for _, c, _ in rep_ok.rows), False)
+    con.close()
 
     # 收尾：删临时目录
     shutil.rmtree(tmp.parent, ignore_errors=True)

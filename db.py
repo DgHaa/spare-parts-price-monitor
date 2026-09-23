@@ -21,6 +21,103 @@ from pathlib import Path
 
 DB_PATH = Path(__file__).resolve().parent / "spare_parts.db"
 
+# ── run_logs.status 合法取值（应用层枚举）─────────────────────────────────
+# 背景：status 列是无约束 TEXT，SQLite 会照单全收任何字符串（'succes' / 'Success'
+# / '' / NULL），而下游消费者对未知值的兜底并不一致：
+#   api/server.py 覆盖率推导  -> else 分支判为 empty（虚增"从未抓到"缺口）
+#   gen_improvement_report.py -> status IN ('failed','partial') 匹配不到（故障漏报）
+#   monitor.py                -> else 判为 FAIL（会喊出来，安全）
+#   web/app.js                -> 显示原始文本（样式错但不丢信息）
+# 即"写入不报错、读取不一定报错、指标对不上才发现"。这里收敛为单一常量源 +
+# 写入前断言，让拼写错误在 log_run() 处立即抛出（fail fast），零迁移成本。
+#
+# 注意：这里只做应用层软约束，尚未加 DB 级 CHECK 约束。SQLite 不支持
+# ALTER TABLE ADD CONSTRAINT，需整表重建（关外键→建新表→拷数据→删旧表→改名→
+# 重建索引→foreign_key_check）。待状态集合稳定（连续 2~3 个季度不再新增）后，
+# 由 tools/verify_quarterly_run.py 的白名单巡检确认无脏数据，再做一次性迁移。
+STATUS_SUCCESS = "success"          # 本轮抓取成功
+STATUS_PARTIAL = "partial"          # 部分品类/机型成功
+STATUS_FAILED = "failed"            # 真失败（含"自动发现 0 机型"这类静默丢数据）
+STATUS_RESUMED = "resumed"          # 断点续跑：本季机型均已抓取，本轮无新增（正常）
+STATUS_UNAVAILABLE = "unavailable"  # 官网不提供备件价 / KB 人工研判需真机代理（非我方缺口）
+STATUS_SKIPPED = "skipped"          # 未收录：无 KB 记录
+
+#: run_logs.status 的全部合法取值。任何写入必须命中此集合。
+VALID_STATUSES = frozenset({
+    STATUS_SUCCESS, STATUS_PARTIAL, STATUS_FAILED,
+    STATUS_RESUMED, STATUS_UNAVAILABLE, STATUS_SKIPPED,
+})
+
+#: 中性状态：不代表失败，不应触发待修队列。
+NEUTRAL_STATUSES = frozenset({STATUS_RESUMED, STATUS_UNAVAILABLE, STATUS_SKIPPED})
+
+#: 多品类汇总时的状态优先级（越靠前越"需要关注"）。
+STATUS_PRIORITY = (STATUS_FAILED, STATUS_PARTIAL, STATUS_SUCCESS,
+                   STATUS_RESUMED, STATUS_UNAVAILABLE, STATUS_SKIPPED)
+
+
+def validate_status(status):
+    """校验 run_logs.status 合法性；非法时抛 ValueError，并给出最接近的合法值提示。"""
+    if status in VALID_STATUSES:
+        return status
+    # 拼写纠错提示：优先大小写差异，其次编辑距离最近者
+    low = str(status).strip().lower()
+    for s in VALID_STATUSES:
+        if s.lower() == low:
+            raise ValueError(
+                f"非法 run_logs.status={status!r}：大小写不匹配，应为 {s!r}")
+    best, best_d = None, 99
+    for s in VALID_STATUSES:
+        d = _edit_distance(low, s)
+        if d < best_d:
+            best, best_d = s, d
+    hint = f"，是否想写 {best!r}？" if best and best_d <= 3 else ""
+    raise ValueError(
+        f"非法 run_logs.status={status!r}{hint}；合法值：{sorted(VALID_STATUSES)}")
+
+
+def _edit_distance(a, b):
+    """Levenshtein 距离（仅用于拼写纠错提示，输入极短，无需优化）。"""
+    if a == b:
+        return 0
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1,
+                           prev[j - 1] + (ca != cb)))
+        prev = cur
+    return prev[-1]
+
+
+def summarize_status(statuses, default=STATUS_SKIPPED):
+    """多品类区域的 run_log 状态汇总：按 STATUS_PRIORITY 取「最需关注」的那个。
+
+    一个 brand×country 可能有多条 KB 记录（如 Apple phone/tablet/watch），逐品类抓取后
+    要汇总成**一条** run_log（否则同秒多条日志会互相覆盖，见 crawler/run.py 说明）。
+
+    语义（2026-09-23 状态拆分后）：
+      failed > partial > success > resumed > unavailable > skipped
+      即"有坏消息先报坏消息；有好消息就报好消息；都没有才报中性的续跑/不可用"。
+
+    特例：unavailable 仅当**全部**品类都不可用时才成立。若与 skipped 混合，说明仍有
+    品类属"未收录"（我方缺口），按 skipped 上报 —— 不能把缺口说成"对方不提供"。
+    空列表回退 default。
+    """
+    if not statuses:
+        return default
+    for st in STATUS_PRIORITY:
+        if st == STATUS_UNAVAILABLE:
+            if all(s == STATUS_UNAVAILABLE for s in statuses):
+                return STATUS_UNAVAILABLE
+            continue
+        if st == STATUS_SKIPPED:
+            return STATUS_SKIPPED
+        if st in statuses:
+            return st
+    return default
+
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS brands (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -132,10 +229,16 @@ CREATE TABLE IF NOT EXISTS run_logs (
   quarter TEXT,
   started_at TEXT,
   finished_at TEXT,
-  status TEXT,            -- success / partial / failed     本轮抓取结果
-                          -- resumed                     断点续跑：本季机型均已抓，本轮无新增（正常）
-                          -- unavailable                 KB 人工研判「官网不提供备件价/需真机代理」
-                          -- skipped                     未收录（无 KB 记录）
+  status TEXT,            -- 合法值见文件头 VALID_STATUSES（应用层枚举 + log_run 断言）
+                          -- 尚无 DB 级 CHECK 约束：SQLite 不支持 ALTER TABLE ADD CONSTRAINT，
+                          -- 待状态集合稳定后整表重建迁移；在此之前由
+                          -- tools/verify_quarterly_run.py 的白名单巡检兜底
+                          -- success      本轮抓取成功
+                          -- partial      部分品类/机型成功
+                          -- failed       真失败（含"自动发现 0 机型"的静默丢数据）
+                          -- resumed      断点续跑：本季机型均已抓，本轮无新增（正常）
+                          -- unavailable  官网不提供备件价 / KB 研判需真机代理（非我方缺口）
+                          -- skipped      未收录（无 KB 记录）
   rows_written INTEGER,
   error_text TEXT,
   anomaly_flag INTEGER DEFAULT 0,
@@ -772,7 +875,12 @@ def rows_to_dict(rs):
 
 def log_run(brand, country, quarter, started_at, finished_at, status,
             rows_written, error_text="", anomaly_flag=0, anomaly_reason="", conn=None):
-    """每次品牌×国别抓取结束写一条运行日志（监控层判定成功与否的依据）。"""
+    """每次品牌×国别抓取结束写一条运行日志（监控层判定成功与否的依据）。
+
+    status 必须是 VALID_STATUSES 之一，否则抛 ValueError（见文件头说明）。
+    这里做应用层软约束：写入口唯一，故一处校验即覆盖全部调用方。
+    """
+    status = validate_status(status)
     own = conn is None
     c = conn or get_conn()
     c.execute("""INSERT INTO run_logs(brand,country,quarter,started_at,finished_at,

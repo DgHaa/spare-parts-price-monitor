@@ -504,5 +504,16 @@
     }
   ],
   "diff": [],
-  "findings": []
+  "findings": [
+    {
+      "severity": "INFO",
+      "code": "STATUS_VOCAB",
+      "message": "run_logs.status 白名单通过：resumed=186、success=135、failed=30、unavailable=26"
+    },
+    {
+      "severity": "INFO",
+      "code": "BASELINE_SKIP",
+      "message": "未提供或找不到基线库，跳过对比"
+    }
+  ]
 }

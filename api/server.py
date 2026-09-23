@@ -275,28 +275,42 @@ def api_overview():
                        AND ps.quarter=?) AS price_rows_latest,
                   (SELECT MAX(s.finished_at) FROM run_logs s
                      WHERE s.brand=r.brand AND s.country=r.country
-                       AND s.status='success') AS last_success_at,
+                       AND s.status=?) AS last_success_at,
                   (SELECT COUNT(*) FROM maintenance_queue q
                      WHERE q.brand=r.brand AND q.country=r.country AND q.status='open') AS open_issues
            FROM run_logs r
            WHERE r.id IN (SELECT MAX(id) FROM run_logs GROUP BY brand, country)
-           ORDER BY r.brand, r.country""", (latest,)))
+           ORDER BY r.brand, r.country""", (latest, db.STATUS_SUCCESS)))
     for r in cov:
         if r["price_rows_latest"]:
             r["cov_status"] = "ok"
         elif r["price_rows"]:
             r["cov_status"] = "stale"
-        elif r["status"] == "failed" or r["open_issues"]:
+        elif r["status"] == db.STATUS_FAILED or r["open_issues"]:
             r["cov_status"] = "failed"
-        elif r["status"] == "unavailable":
+        elif r["status"] == db.STATUS_UNAVAILABLE:
             # 2026-09-23：KB 人工研判「官网不提供备件价 / 需真机代理」的区域单列。
             # 与「从未抓到数据」语义不同，混为一谈会让覆盖度指标失真（像是我们漏抓了），
             # 而实际是对方根本不公布——这类必须如实呈现"官方不提供"，不能算我方缺口。
             r["cov_status"] = "unavailable"
         else:
+            # 2026-09-23 加固：这里是「未知 status」的兜底 —— 原先无论 status 是什么都
+            # 静默归入 empty（"从未成功抓到"），一个拼错的 'succes' 就会虚增覆盖缺口，
+            # 看起来像我们漏抓了。现单独标记 status_unknown 并在 KPI 里计数，
+            # 由 tools/verify_quarterly_run.py 的白名单巡检兜底报 ERROR。
+            # cov_status 仍保持 empty（不新增前端分类，避免破坏既有配色/图例），
+            # 但"是否非法"作为独立信号暴露出来。
+            if r["status"] not in db.VALID_STATUSES:
+                r["status_unknown"] = True
+                print(f"[warn] run_logs.status 非法：{r['brand']}/{r['country']} "
+                      f"status={r['status']!r}；合法值 {sorted(db.VALID_STATUSES)}",
+                      file=sys.stderr, flush=True)
+            else:
+                r["status_unknown"] = False
             r["cov_status"] = "empty"
     kpis["coverage"] = {s: sum(1 for r in cov if r["cov_status"] == s)
                         for s in ("ok", "stale", "failed", "unavailable", "empty")}
+    kpis["invalid_status_scopes"] = sum(1 for r in cov if r.get("status_unknown"))
     kpis["coverage_latest_quarter"] = latest
     c.close()
     return {"kpis": kpis, "coverage": cov, "quarters": quarters}

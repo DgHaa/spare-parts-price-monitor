@@ -36,7 +36,8 @@ sys.path.insert(0, str(ROOT))
 from db import (init_db, fetch_rates, this_quarter, upsert_brand, upsert_country,  # noqa: E402
                upsert_model, upsert_part, insert_snapshot, get_rate_meta,
                normalize_base_model, extract_spec, extract_color, classify_tier,
-               log_run, add_issue, model_already_captured, guess_category)
+               log_run, add_issue, model_already_captured, guess_category,
+               STATUS_SUCCESS, STATUS_FAILED, STATUS_RESUMED)
 
 # KB 位置：优先仓库内副本 references/kb（已随仓库同步），缺失时回退到 skill 目录
 _REPO_KB = Path(__file__).resolve().parents[1] / "references" / "kb"
@@ -759,7 +760,7 @@ def crawl_and_write(brand, country, country_name, rec, force=False):
     fetch_rates(quarter)
     started = datetime.now().isoformat(timespec="seconds")
     rows_total = 0
-    status = "success"
+    status = STATUS_SUCCESS
     reason = ""
     anomaly = 0
     try:
@@ -797,27 +798,27 @@ def crawl_and_write(brand, country, country_name, rec, force=False):
             n = _write_model(brand, country, country_name, rec, mname, rows, detail_url)
             rows_total += n
         if total == 0:
-            status = "failed"
+            status = STATUS_FAILED
             anomaly = 1
             reason = "服务端未解析到任何机型（页面结构变更 / 区域不可达）"
         elif attempted == 0:
             # 2026-09-23 状态语义拆分：断点续跑独立为 resumed（原与"官网不提供"混记 skipped）
-            status = "resumed"
+            status = STATUS_RESUMED
             reason = f"断点续跑：本季 {total} 台机型均已抓取，本轮无新增价行"
         elif rows_total == 0:
-            status = "failed"
+            status = STATUS_FAILED
             anomaly = 1
             reason = f"尝试 {attempted} 台机型但 0 条价（页面结构变更或价格列解析失败）"
-        if status == "resumed":
+        if status == STATUS_RESUMED:
             print(f"  [resume] {brand}/{country} 本季已抓 {total} 台，不再重复取价", flush=True)
     except Exception as e:  # noqa: BLE001
-        status = "failed"
+        status = STATUS_FAILED
         anomaly = 1
         reason = f"运行时异常：{str(e)[:240]}"
     finally:
         finished = datetime.now().isoformat(timespec="seconds")
         log_run(brand, country, quarter, started, finished, status, rows_total,
-                error_text=reason if status == "failed" else "",
+                error_text=reason if status == STATUS_FAILED else "",
                 anomaly_flag=anomaly, anomaly_reason=reason)
         if anomaly:
             add_issue(brand, country, reason)

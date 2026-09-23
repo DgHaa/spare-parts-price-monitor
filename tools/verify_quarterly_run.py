@@ -8,7 +8,9 @@
   1) 量级异常：人工费相对同类中位数 / 相对物料费 / 绝对上限 任一越界；
   2) 静默失联：某 brand×country 有已发现机型但**本季 0 条价格**
      （= 节点选错 / 接口改版 / 静默 0 机型的典型特征，日志看起来一切正常）；
-  3) 结构卫生：孤儿快照、重复快照、非正价格、跨区同价串味。
+  3) 结构卫生：孤儿快照、重复快照、非正价格、跨区同价串味；
+  4) 状态词汇表：run_logs.status 实际取值必须 ⊆ db.VALID_STATUSES
+     （应用层枚举的可观测兜底，见 check_status_vocabulary 说明）。
 
 用法：
   python tools/verify_quarterly_run.py
@@ -25,6 +27,9 @@ import statistics
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+import db  # noqa: E402  status 词汇表单一来源（VALID_STATUSES / STATUS_*）
 
 # 人工费绝对上限（当地货币）——只用于兜住「离谱到不可能是真实定价」的值，
 # 阈值刻意放宽，避免把高定价市场误判。真正灵敏的是中位数倍数与物料费比值。
@@ -254,6 +259,45 @@ def compare_baseline(base_path, cur_cov, rep):
     return diff
 
 
+def check_status_vocabulary(con, rep):
+    """run_logs.status 白名单巡检：实际取值必须 ⊆ db.VALID_STATUSES。
+
+    这是 db.py 应用层枚举的**可观测兜底**。status 列没有 DB 级 CHECK 约束
+    （SQLite 不支持 ALTER TABLE ADD CONSTRAINT，需整表重建，故暂缓），
+    写入层已由 db.log_run() 的 validate_status() 断言拦截，但以下情况仍可能漏进来：
+      - 历史遗留数据（约束引入之前写入的）
+      - 绕过 log_run 的直接 SQL 写入
+
+    为什么必须报 ERROR 而不是 WARN：非法值在下游是**静默**的 ——
+      api/server.py 覆盖率推导会把未知值归入 empty（"从未抓到"）→ 虚增我方缺口；
+      output/gen_improvement_report.py 的 status IN ('failed','partial') 匹配不到
+      → 真正的故障从报告里消失。二者都不会自己喊出来，只能靠本巡检暴露。
+    """
+    try:
+        rows = con.execute(
+            "SELECT status, COUNT(*) n FROM run_logs GROUP BY status ORDER BY n DESC").fetchall()
+    except sqlite3.OperationalError as e:
+        rep.add(SEV_ERROR, "STATUS_TABLE_MISSING", f"无法读取 run_logs：{e}")
+        return {}
+    seen = {r["status"]: r["n"] for r in rows}
+    if not seen:
+        rep.add(SEV_INFO, "STATUS_EMPTY", "run_logs 无任何记录")
+        return seen
+    bad = {s: n for s, n in seen.items() if s not in db.VALID_STATUSES}
+    if bad:
+        detail = "、".join(f"{s!r}×{n}" for s, n in
+                          sorted(bad.items(), key=lambda x: -x[1]))
+        rep.add(SEV_ERROR, "STATUS_INVALID",
+                f"run_logs.status 出现非法值：{detail}；"
+                f"合法值 {sorted(db.VALID_STATUSES)}"
+                f"（非法值会被覆盖率推导静默归入 empty，并让改进报告漏报 failed）")
+    else:
+        rep.add(SEV_INFO, "STATUS_VOCAB",
+                "run_logs.status 白名单通过：" +
+                "、".join(f"{s}={n}" for s, n in seen.items()))
+    return seen
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", default=os.path.join(ROOT, "spare_parts.db"))
@@ -274,6 +318,7 @@ def main():
         check_structural(con, rep)
         check_silent_failure(cov, rep)
         check_crosstalk(con, rep)
+        check_status_vocabulary(con, rep)
         diff = compare_baseline(args.baseline, cov, rep)
     finally:
         con.close()
