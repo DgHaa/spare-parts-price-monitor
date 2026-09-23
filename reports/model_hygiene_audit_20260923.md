@@ -54,7 +54,7 @@ apple/jp 有 **27 台**机型名含汉字（`Apple Watch SE (第 2 世代) GPS 4
 | 品牌 | 缺失区域 | KB status | 原因（KB note） |
 |---|---|---|---|
 | xiaomi | de / tr / my / jp / ae / mx | `unavailable` | 小米备件价接口 `api2.service.order.mi.com` **仅中国可用**，非 cn 无对应接口 |
-| vivo | de | **`unverified`** | 尚未验证有无官方价源（唯一待探索项） |
+| vivo | de | **`unverified`** | 尚未验证有无官方价源（唯一待探索项）→ **2026-09-23 结案为 `unavailable`** |
 | vivo | jp | `unavailable` | — |
 | samsung | mx | `unavailable` | `samsung_api` 仅实现 de/my/ae/tr/jp/cn |
 | apple | tr | `unavailable` | Apple 未提供土耳其语区维修价页 |
@@ -125,5 +125,7 @@ $ python tools/verify_oppo_matrix.py --brand xiaomi --model "Xiaomi MIX Fold 2 �
 
 ## 待探索
 
-- **vivo/de**：唯一 `unverified` 的区域 —— 尚未验证 vivo 德国官网是否提供备件价询价，
-  值得优先探测（成本低、可能带来一个新区域的覆盖）。
+- ~~**vivo/de**：唯一 `unverified` 的区域~~ → **已于 2026-09-23 当日结案**：
+  实测为「官方有查询工具、但该区未配置价格数据」，结案为 `unavailable`。
+  详见 `vivo_de_source_audit_20260923.md`。
+  至此 KB 中**不再有 `unverified`**（verified 37 / unavailable 9 / blocked 7 / unverified 0）。

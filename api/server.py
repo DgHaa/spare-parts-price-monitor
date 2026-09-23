@@ -82,11 +82,19 @@ def _kb_region_status(brand):
         for rec in (arr or []):
             st = rec.get("status") or rec.get("query", {}).get("status")
             if st in ("unavailable", "unverified"):
-                # 说明文字在 KB 里有三个可能的层级，逐个回退（实测各品牌不一：
-                # apple 在 recipe 级，xiaomi 在 query.api 级）。
-                note = (rec.get("note")
-                        or rec.get("query", {}).get("note")
-                        or rec.get("query", {}).get("api", {}).get("note") or "")
+                # 说明文字在 KB 里有多个可能的层级与拼写，逐个回退。
+                # 实测（2026-09-23）各品牌不一：
+                #   · 键名：recipe 级一律用复数 "notes"（每家 7 条，是主流写法），
+                #           只有 query/api 级用单数 "note"（oppo/samsung/xiaomi/vivo 部分条目）；
+                #           只认单数会漏掉绝大多数说明（vivo/jp、apple/tr 等横幅会显示为空）。
+                #   · 层级：apple 在 query 级、oppo/samsung/xiaomi 在 query.api 级。
+                note = ""
+                for src in (rec, rec.get("query") or {},
+                            (rec.get("query") or {}).get("api") or {}):
+                    for k in ("note", "notes"):
+                        v = src.get(k)
+                        if v and not note:
+                            note = v
                 out.append({"country": cc, "status": st, "note": note[:240]})
                 break
     return out

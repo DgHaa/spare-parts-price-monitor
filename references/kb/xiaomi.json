@@ -115,12 +115,12 @@
                   "api": {"service_api": "https://www.mi.com/de", "fetch_mode": "http", "concurrency": 8,
                           "class_tree": "/repair_price/shop_class_info?keyword=&callback=cb",
                           "class_price": "/repair_price/shop_band_wx_price?class_id={class_id}&callback=cb",
-                          "note": "小米备件价接口(api2.service.order.mi.com)仅中国可用；非 cn 国家无对应接口，service_api 指向 regional mi 域名（无 /repair_price 路径）→ 取价失败→failed 记录，避免把 cn 数据误写成本国。"},
+                          "note": "小米备件价接口(api2.service.order.mi.com)仅中国可用；非 cn 国家无对应接口，service_api 指向 regional mi 域名（无 /repair_price 路径）→ 该区域无可用接口；因 recipe status=unavailable，运行时会**跳过**（不发请求），避免把 cn 数据误写成本国。"},
                   "series_filter": {"电脑办公": ["平板", "Pad"]}},
         "extract": {"cols": {"part": 0, "material_price": 1, "labor_price": 2}},
         "evidence": {"captured_url": "https://www.mi.com/de/service/materialprice", "captured_at": "2026-09-22"},
         "status": "unavailable", "reviewed": true, "updated_at": "2026-09-22",
-        "notes": "【2026-09-22 扩配】小米备件价接口仅中国(api2.service.order.mi.com)可用，de 无对应接口。保留条目以便覆盖矩阵有记录；运行时以 failed 记录标记（非故障，无数据污染）。如需转正需为 de 实现区域接口。"
+        "notes": "【2026-09-22 扩配】小米备件价接口仅中国(api2.service.order.mi.com)可用，de 无对应接口。保留条目以便覆盖矩阵有记录；因 recipe status=unavailable，运行时**跳过**该区域（写 skipped 的 run_log，不发请求、不建待修工单、无数据污染）。如需转正需为 de 实现区域接口。"
       }
     ],
     "tr": [
@@ -131,12 +131,12 @@
                   "api": {"service_api": "https://www.mi.com/tr", "fetch_mode": "http", "concurrency": 8,
                           "class_tree": "/repair_price/shop_class_info?keyword=&callback=cb",
                           "class_price": "/repair_price/shop_band_wx_price?class_id={class_id}&callback=cb",
-                          "note": "小米备件价接口(api2.service.order.mi.com)仅中国可用；非 cn 国家无对应接口，service_api 指向 regional mi 域名（无 /repair_price 路径）→ 取价失败→failed 记录，避免把 cn 数据误写成本国。"},
+                          "note": "小米备件价接口(api2.service.order.mi.com)仅中国可用；非 cn 国家无对应接口，service_api 指向 regional mi 域名（无 /repair_price 路径）→ 该区域无可用接口；因 recipe status=unavailable，运行时会**跳过**（不发请求），避免把 cn 数据误写成本国。"},
                   "series_filter": {"电脑办公": ["平板", "Pad"]}},
         "extract": {"cols": {"part": 0, "material_price": 1, "labor_price": 2}},
         "evidence": {"captured_url": "https://www.mi.com/tr/service/materialprice", "captured_at": "2026-09-22"},
         "status": "unavailable", "reviewed": true, "updated_at": "2026-09-22",
-        "notes": "【2026-09-22 扩配】小米备件价接口仅中国(api2.service.order.mi.com)可用，tr 无对应接口。保留条目以便覆盖矩阵有记录；运行时以 failed 记录标记（非故障，无数据污染）。如需转正需为 tr 实现区域接口。"
+        "notes": "【2026-09-22 扩配】小米备件价接口仅中国(api2.service.order.mi.com)可用，tr 无对应接口。保留条目以便覆盖矩阵有记录；因 recipe status=unavailable，运行时**跳过**该区域（写 skipped 的 run_log，不发请求、不建待修工单、无数据污染）。如需转正需为 tr 实现区域接口。"
       }
     ],
     "my": [
@@ -147,12 +147,12 @@
                   "api": {"service_api": "https://www.mi.com/my", "fetch_mode": "http", "concurrency": 8,
                           "class_tree": "/repair_price/shop_class_info?keyword=&callback=cb",
                           "class_price": "/repair_price/shop_band_wx_price?class_id={class_id}&callback=cb",
-                          "note": "小米备件价接口(api2.service.order.mi.com)仅中国可用；非 cn 国家无对应接口，service_api 指向 regional mi 域名（无 /repair_price 路径）→ 取价失败→failed 记录，避免把 cn 数据误写成本国。"},
+                          "note": "小米备件价接口(api2.service.order.mi.com)仅中国可用；非 cn 国家无对应接口，service_api 指向 regional mi 域名（无 /repair_price 路径）→ 该区域无可用接口；因 recipe status=unavailable，运行时会**跳过**（不发请求），避免把 cn 数据误写成本国。"},
                   "series_filter": {"电脑办公": ["平板", "Pad"]}},
         "extract": {"cols": {"part": 0, "material_price": 1, "labor_price": 2}},
         "evidence": {"captured_url": "https://www.mi.com/my/service/materialprice", "captured_at": "2026-09-22"},
         "status": "unavailable", "reviewed": true, "updated_at": "2026-09-22",
-        "notes": "【2026-09-22 扩配】小米备件价接口仅中国(api2.service.order.mi.com)可用，my 无对应接口。保留条目以便覆盖矩阵有记录；运行时以 failed 记录标记（非故障，无数据污染）。如需转正需为 my 实现区域接口。"
+        "notes": "【2026-09-22 扩配】小米备件价接口仅中国(api2.service.order.mi.com)可用，my 无对应接口。保留条目以便覆盖矩阵有记录；因 recipe status=unavailable，运行时**跳过**该区域（写 skipped 的 run_log，不发请求、不建待修工单、无数据污染）。如需转正需为 my 实现区域接口。"
       }
     ],
     "jp": [
@@ -163,12 +163,12 @@
                   "api": {"service_api": "https://www.mi.com/jp", "fetch_mode": "http", "concurrency": 8,
                           "class_tree": "/repair_price/shop_class_info?keyword=&callback=cb",
                           "class_price": "/repair_price/shop_band_wx_price?class_id={class_id}&callback=cb",
-                          "note": "小米备件价接口(api2.service.order.mi.com)仅中国可用；非 cn 国家无对应接口，service_api 指向 regional mi 域名（无 /repair_price 路径）→ 取价失败→failed 记录，避免把 cn 数据误写成本国。"},
+                          "note": "小米备件价接口(api2.service.order.mi.com)仅中国可用；非 cn 国家无对应接口，service_api 指向 regional mi 域名（无 /repair_price 路径）→ 该区域无可用接口；因 recipe status=unavailable，运行时会**跳过**（不发请求），避免把 cn 数据误写成本国。"},
                   "series_filter": {"电脑办公": ["平板", "Pad"]}},
         "extract": {"cols": {"part": 0, "material_price": 1, "labor_price": 2}},
         "evidence": {"captured_url": "https://www.mi.com/jp/service/materialprice", "captured_at": "2026-09-22"},
         "status": "unavailable", "reviewed": true, "updated_at": "2026-09-22",
-        "notes": "【2026-09-22 扩配】小米备件价接口仅中国(api2.service.order.mi.com)可用，jp 无对应接口。保留条目以便覆盖矩阵有记录；运行时以 failed 记录标记（非故障，无数据污染）。如需转正需为 jp 实现区域接口。"
+        "notes": "【2026-09-22 扩配】小米备件价接口仅中国(api2.service.order.mi.com)可用，jp 无对应接口。保留条目以便覆盖矩阵有记录；因 recipe status=unavailable，运行时**跳过**该区域（写 skipped 的 run_log，不发请求、不建待修工单、无数据污染）。如需转正需为 jp 实现区域接口。"
       }
     ],
     "ae": [
@@ -179,12 +179,12 @@
                   "api": {"service_api": "https://www.mi.com/ae", "fetch_mode": "http", "concurrency": 8,
                           "class_tree": "/repair_price/shop_class_info?keyword=&callback=cb",
                           "class_price": "/repair_price/shop_band_wx_price?class_id={class_id}&callback=cb",
-                          "note": "小米备件价接口(api2.service.order.mi.com)仅中国可用；非 cn 国家无对应接口，service_api 指向 regional mi 域名（无 /repair_price 路径）→ 取价失败→failed 记录，避免把 cn 数据误写成本国。"},
+                          "note": "小米备件价接口(api2.service.order.mi.com)仅中国可用；非 cn 国家无对应接口，service_api 指向 regional mi 域名（无 /repair_price 路径）→ 该区域无可用接口；因 recipe status=unavailable，运行时会**跳过**（不发请求），避免把 cn 数据误写成本国。"},
                   "series_filter": {"电脑办公": ["平板", "Pad"]}},
         "extract": {"cols": {"part": 0, "material_price": 1, "labor_price": 2}},
         "evidence": {"captured_url": "https://www.mi.com/ae/service/materialprice", "captured_at": "2026-09-22"},
         "status": "unavailable", "reviewed": true, "updated_at": "2026-09-22",
-        "notes": "【2026-09-22 扩配】小米备件价接口仅中国(api2.service.order.mi.com)可用，ae 无对应接口。保留条目以便覆盖矩阵有记录；运行时以 failed 记录标记（非故障，无数据污染）。如需转正需为 ae 实现区域接口。"
+        "notes": "【2026-09-22 扩配】小米备件价接口仅中国(api2.service.order.mi.com)可用，ae 无对应接口。保留条目以便覆盖矩阵有记录；因 recipe status=unavailable，运行时**跳过**该区域（写 skipped 的 run_log，不发请求、不建待修工单、无数据污染）。如需转正需为 ae 实现区域接口。"
       }
     ],
     "mx": [
@@ -195,12 +195,12 @@
                   "api": {"service_api": "https://www.mi.com/mx", "fetch_mode": "http", "concurrency": 8,
                           "class_tree": "/repair_price/shop_class_info?keyword=&callback=cb",
                           "class_price": "/repair_price/shop_band_wx_price?class_id={class_id}&callback=cb",
-                          "note": "小米备件价接口(api2.service.order.mi.com)仅中国可用；非 cn 国家无对应接口，service_api 指向 regional mi 域名（无 /repair_price 路径）→ 取价失败→failed 记录，避免把 cn 数据误写成本国。"},
+                          "note": "小米备件价接口(api2.service.order.mi.com)仅中国可用；非 cn 国家无对应接口，service_api 指向 regional mi 域名（无 /repair_price 路径）→ 该区域无可用接口；因 recipe status=unavailable，运行时会**跳过**（不发请求），避免把 cn 数据误写成本国。"},
                   "series_filter": {"电脑办公": ["平板", "Pad"]}},
         "extract": {"cols": {"part": 0, "material_price": 1, "labor_price": 2}},
         "evidence": {"captured_url": "https://www.mi.com/mx/service/materialprice", "captured_at": "2026-09-22"},
         "status": "unavailable", "reviewed": true, "updated_at": "2026-09-22",
-        "notes": "【2026-09-22 扩配】小米备件价接口仅中国(api2.service.order.mi.com)可用，mx 无对应接口。保留条目以便覆盖矩阵有记录；运行时以 failed 记录标记（非故障，无数据污染）。如需转正需为 mx 实现区域接口。"
+        "notes": "【2026-09-22 扩配】小米备件价接口仅中国(api2.service.order.mi.com)可用，mx 无对应接口。保留条目以便覆盖矩阵有记录；因 recipe status=unavailable，运行时**跳过**该区域（写 skipped 的 run_log，不发请求、不建待修工单、无数据污染）。如需转正需为 mx 实现区域接口。"
       }
     ]
   }

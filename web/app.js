@@ -604,9 +604,11 @@
     const noSrc = brandUnavailable(d.brand);
     if (noSrc.length)
       html += '<div class="hint">ℹ️ <b>' + esc(d.brand) + '</b> 在以下区域<b>官方不提供</b>备件价询价：'
-        + noSrc.map(x => esc(cn(x.country)) + '（'
-            + (x.status === "unverified" ? "尚未验证有无官方价源" : "官方未提供") + '）').join('、')
-        + '。这些列留白是<b>官方无此数据</b>，不是抓取失败。</div>';
+        + noSrc.map(x => '<span class="no-src" title="' + esc(x.note || "（KB 未记录原因）")
+            + '">' + esc(cn(x.country)) + '（'
+            + (x.status === "unverified" ? "尚未验证有无官方价源" : "官方未提供") + '）</span>').join('、')
+        + '。这些列留白是<b>官方无此数据</b>，不是抓取失败。'
+        + (noSrc.some(x => x.note) ? '（<b>悬停查看官方口径</b>）' : '') + '</div>';
     // 参考价（B 方案）说明——只在真的出现参考价时展示，避免无谓噪音
     const hasRef = (d.groups || []).some(g => (g.parts || []).some(p =>
       Object.values(p.prices || {}).some(pc => pc.is_reference === 1)));

@@ -66,6 +66,37 @@ def kb_unavailable(brand):
     return out
 
 
+def api_note_fails():
+    """端到端断言：API 暴露的每个「官方不提供备件价」区域，**必须带非空说明**。
+
+    为什么必须测这一层（2026-09-23）：KB 里说明文字的键名不统一 —— recipe 级用复数
+    `notes`（各品牌主流写法），只有 query/api 级才用单数 `note`。`api/server.py`
+    原先只认单数，导致 apple/tr、vivo/jp 等区域的说明在页面上**渲染为空**，
+    "官方无数据"就退化成一句没有理由的空白横幅。此处直接打 API 复现前端取数路径，
+    防止该回退逻辑再次退化。
+    """
+    import json as _json
+    import urllib.request
+    problems = []
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:8000/api/brands", timeout=20) as r:
+            brands = _json.load(r)
+    except Exception as e:
+        return [f"取 /api/brands 失败：{type(e).__name__}: {str(e)[:90]}"]
+    total = 0
+    for b in brands:
+        for u in (b.get("source_unavailable") or []):
+            total += 1
+            if not (u.get("note") or "").strip():
+                problems.append(f"{b['name']}/{u['country']} 标为 {u['status']} "
+                                f"但说明为空（界面会只剩无理由的空白横幅）")
+    if total == 0:
+        problems.append("API 未返回任何『官方不提供备件价』区域（预期 10 个）")
+    else:
+        print(f"[kb] API 暴露「官方不提供备件价」区域 {total} 个，说明文字均非空")
+    return problems
+
+
 def _assert(info, fails, expect_no_src=0):
     if not info.get("tableRendered"):
         fails.append("比价矩阵未渲染（.heat 表格缺失）")
@@ -77,6 +108,13 @@ def _assert(info, fails, expect_no_src=0):
     if expect_no_src and not info.get("unavailableNoteRendered"):
         fails.append(f"该品牌有 {expect_no_src} 个『官方不提供备件价』的区域，"
                      f"但页面未渲染说明横幅")
+    if expect_no_src:
+        titles = info.get("noSrcTitles") or []
+        if len(titles) != expect_no_src:
+            fails.append(f"说明横幅里的区域数 {len(titles)} ≠ KB 的 {expect_no_src} 个")
+        blank = [t["cc"] for t in titles if not t["tip"] or "未记录原因" in t["tip"]]
+        if blank:
+            fails.append(f"以下区域的说明为空（界面只剩无理由的空白横幅）: {blank}")
     if info.get("refCellCount", 0) != 0:
         fails.append(f"参考价单元格应为 0（方案已停用），实际 {info['refCellCount']}")
     if info.get("refBadgeCount", 0) != 0:
@@ -108,6 +146,7 @@ def main():
     from playwright.sync_api import sync_playwright
 
     fails = []
+    fails += api_note_fails()
     with sync_playwright() as p:
         print("[1/5] 启动无头 Chromium…", flush=True)
         b = p.chromium.launch(headless=True, executable_path=find_chromium(),
@@ -135,6 +174,11 @@ def main():
                 refBadgeCount: document.querySelectorAll('sup.ref').length,
                 hasRefText: body.includes('参考·中国'),
                 unavailableNoteRendered: hints.includes('官方不提供') && hints.includes('不是抓取失败'),
+                // 「官方不提供」区域必须**逐条**带非空原因（悬停可见）。
+                // 只渲染一个没有理由的空横幅等于没说明 —— 2026-09-23 修的就是这个：
+                // KB 用复数 notes、读取端只认单数 note，导致 vivo/de、vivo/jp 的说明为空。
+                noSrcTitles: [...document.querySelectorAll('.no-src')]
+                    .map(e => ({cc: (e.textContent||'').trim(), tip: (e.title||'').trim()})),
             };
         }""")
         if a.shot:

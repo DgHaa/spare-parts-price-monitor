@@ -355,7 +355,7 @@
         "locale": "es-MX",
         "currency": "MXN",
         "entry": {"url": "https://www.samsung.com/mx/support/", "steps": [], "expect_url": ""},
-        "query": {"mode": "samsung_api", "api": {"type": "mx_estimator", "note": "三星墨西哥无公开备件价取价接口（samsung_api 仅实现 de/my/ae/tr/jp/cn）。type=mx_estimator 未实现→运行时 RuntimeError→failed 记录，无数据污染。"}},
+        "query": {"mode": "samsung_api", "api": {"type": "mx_estimator", "note": "三星墨西哥无公开备件价取价接口（samsung_api 仅实现 de/my/ae/tr/jp/cn）。type=mx_estimator 未实现；因 recipe status=unavailable，运行时在 mode 分派前即**跳过**（不会走到 RuntimeError，写 skipped 的 run_log，无数据污染）。"}},
         "evidence": {"captured_url": "https://www.samsung.com/mx/support/", "captured_at": "2026-09-22"},
         "status": "unavailable", "reviewed": true, "updated_at": "2026-09-22",
         "notes": "【2026-09-22 扩配→2026-09-22 自愈降级】三星墨西哥站无公开备件价取价接口（samsung_api 仅实现 de/my/ae/tr/jp/cn），type=mx_estimator 未实现。原 unverified 导致 crawl 时 RuntimeError→failed 记录（误报）。降级为 unavailable：crawl_brand_country 短路返回 skipped（不崩溃、不污染 failed 指标），待修队列保留 open 记录『该区域无公开工具』。如需转正需为 MX 新增 crawler/samsung_api.py 的 fetch_mx。"

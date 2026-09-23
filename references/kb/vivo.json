@@ -231,13 +231,14 @@
         },
         "evidence": {
           "captured_url": "https://www.vivo.com/de/support/accessory",
-          "captured_at": "2026-09-22",
-          "api_verified_at": "2026-09-22"
+          "captured_at": "2026-09-23",
+          "api_verified_at": "2026-09-23",
+          "probe_note": "真浏览器点选机型，站点自身 POST /de/support/queryPriceByProductId 返回 sparePartsVoList=null；同端点 my 站返回完整价表（对照）"
         },
-        "status": "unverified",
+        "status": "unavailable",
         "reviewed": true,
-        "updated_at": "2026-09-22",
-        "notes": "【2026-09-22 扩配】原标 unavailable（2026-08-27 旧 DOM 路径 vivo_parts_grid 在 de 站 0 行）。改为与 my/tr/ae/jp/mx 一致的 vivo_api(HTTP) 口径尝试取价（vivo.com/de/support/accessory → queryPriceByProductId）。若 de 站实际无工具，本轮 0 机型→skipped 记录，但会产生 run_log 消除灰格。"
+        "updated_at": "2026-09-23",
+        "notes": "【2026-09-23 实测转 unavailable·证据链完整】原标 unverified（2026-09-22 扩配后待验）。本轮用真浏览器+官网自身的网络请求查清：**vivo 德国站有备件价查询工具，但该区未配置任何价格数据**。判据：① 页面存在且 SSR 出 30 个机型（V70 FE/V70/V50 Lite 5G/…），不是 jp 那种 404；② regionId 从页面 globalVar 读到就是 'de'（locale de-DE），非区域码拼错；③ 用真浏览器点选 V70 FE(data-id=456)，**站点自己**发出 POST https://www.vivo.com/de/support/queryPriceByProductId id=456，响应 success=true 但 sparePartsVoList=null，且 decimalPoint/thousands/spareCompany/spareCurrencyPosition **全部为 null**（区域未配价格的典型特征），页面渲染 0 个价格节点；④ 该区全部 30 台逐台 HTTP 实测，30/30 均为 noprice；⑤ 对照组 my 站同端点同参数返回完整价表（spareCompany='RM'）并渲染出 RM130.00 等价格——证明取价链路与官网同源同参、无实现缺陷；⑥ de 站无其它价格入口（repairPrice/repair-price/servicePrice/price 均 404，support 首页无 'Preis' 字样）。→ 结论：官方在该区如实不公布备件价（工具在、选出机型也返回空），与 xiaomi 非 cn 区域同类。运行时按 skipped 记录，不再反复尝试。截图存证：out_vivo_de_probe2.png（空态）对照 out_vivo_my_probe2.png（完整价表）。"
       }
     ],
     "jp": [
