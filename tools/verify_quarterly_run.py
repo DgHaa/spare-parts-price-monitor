@@ -405,6 +405,65 @@ def check_enum_vocabularies(con, rep):
                 + (f"；NULL 分布：{'、'.join(null_notes)}" if null_notes else ""))
 
 
+# 口径硬约束的品牌：这些品牌的 price 必须等于「备件费 + 人工费」（官网预估价口径），
+# 与其官网对客口径（预估价格 = 备件费 + 人工费）及各品牌一致性要求对齐。
+CALIBER_STRICT_BRANDS = ("oppo",)
+
+
+def check_price_caliber(con, rep):
+    """快照价格口径一致性：price 必须 = material_fee + labor_fee（labor 缺失按 0）。
+
+    为什么必须是 ERROR：口径不一的后果是**静默**的横向失真，不是报错——
+      · 跨国：OPPO 各区报价风格不同（de/jp 的 laborCostAmount 恒为 0、retailPrice
+        即打包价；mx/tr/ae/my 单列人工费）。只取 retailPrice 会拿德国的打包价去比
+        他国的裸件价，廉价件被放大成 +1225% 的假价差（2026-09-24 实测）。
+      · 跨品牌：三星/苹果/小米存的都是含人工总价，OPPO 若只存裸件费会系统性偏便宜。
+    2026-09-24 已按此口径回填（tools/backfill_oppo_total_price.py）。
+    """
+    try:
+        rows = con.execute("""
+            SELECT b.name brand,
+                   COUNT(*) n,
+                   SUM(CASE WHEN ps.material_fee IS NOT NULL
+                             AND ABS(ps.price - (ps.material_fee
+                                 + COALESCE(ps.labor_fee, 0))) > 0.005
+                        THEN 1 ELSE 0 END) bad
+            FROM price_snapshots ps
+            JOIN parts p ON p.id = ps.part_id
+            JOIN models m ON m.id = p.model_id
+            JOIN brands b ON b.id = m.brand_id
+            GROUP BY 1 ORDER BY 1
+        """).fetchall()
+    except sqlite3.OperationalError as e:
+        rep.add(SEV_ERROR, "CALIBER_UNREADABLE", f"无法统计价格口径：{e}")
+        return
+
+    strict_bad = []
+    for r in rows:
+        brand, n, bad = r[0], r[1], r[2] or 0
+        if not bad:
+            continue
+        if brand in CALIBER_STRICT_BRANDS:
+            strict_bad.append((brand, bad, n))
+        else:
+            # 非硬约束品牌只报 INFO（不制造红色噪音），但保持可见——同类缺陷一样会
+            # 让跨品牌比价失真（如 vivo 中国区 price 亦为裸件费）。
+            rep.add(SEV_INFO, "CALIBER_LOOSE",
+                    f"{brand}：{bad}/{n} 行 price ≠ 备件费+人工费（裸件费口径，"
+                    f"跨品牌比价会系统性偏便宜；未纳入硬约束，待评估）")
+
+    if strict_bad:
+        detail = "；".join(f"{b} {n_}/{tot} 行" for b, n_, tot in strict_bad)
+        rep.add(SEV_ERROR, "CALIBER_MISMATCH",
+                f"价格口径不一致（price 必须 = 备件费 + 人工费）：{detail}。"
+                f"后果：跨国比价会拿「打包价」与「裸件价」相比，廉价件被放大成假价差；"
+                f"跨品牌比价则会系统性低估该品牌。"
+                f"修复：重跑抓取或执行 tools/backfill_oppo_total_price.py")
+    else:
+        rep.add(SEV_INFO, "CALIBER",
+                f"价格口径一致（{'/'.join(CALIBER_STRICT_BRANDS)}：price = 备件费 + 人工费）")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", default=os.path.join(ROOT, "spare_parts.db"))
@@ -427,6 +486,7 @@ def main():
         check_crosstalk(con, rep)
         check_status_vocabulary(con, rep)
         check_enum_vocabularies(con, rep)
+        check_price_caliber(con, rep)
         diff = compare_baseline(args.baseline, cov, rep)
     finally:
         con.close()

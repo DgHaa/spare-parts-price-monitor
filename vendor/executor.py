@@ -951,9 +951,24 @@ def flatten_reborn_parts(groups):
 
     结构：partPriceList[] = 分类组（groupName/groupCode，如"屏幕"/"主板"），
     组内 childList[] = 具体备件（partName/retailPrice/laborCostAmount/lv3ClassificationName）。
-    部分组无 childList（叶子即自身）。报价口径：官网"预估价格 = 人工费 + 备件费"，
-    故 retailPrice 记 material_fee、laborCostAmount 记 labor_fee，且 has_labor_split=1
-    （官网明确单列人工费，非本项目推算）。
+    部分组无 childList（叶子即自身）。
+
+    **价格口径（2026-09-24 修正）**：官网对客口径是"预估价格 = 备件费 + 人工费"，
+    故 `price` = retailPrice + laborCostAmount，与三星/苹果/小米（均为含人工总价）
+    跨品牌可比；retailPrice 另记 material_fee、laborCostAmount 另记 labor_fee 供举证。
+
+    此前 `price` 只取 retailPrice（裸备件费），与其它品牌口径不一致，且造成
+    **跨国比价失真**：OPPO 各区报价风格不同——de/jp 的 laborCostAmount 恒为 0
+    （整区不单列人工，retailPrice 即打包价），mx/tr/ae/my 则单列人工费。
+    于是"德国的打包价 vs 他国的裸件价"把廉价件放大到 +1225% 之类的假象。
+    实测（2026Q3，n=49~68）：改按含人工口径后 de/mx 由 6.27x 收敛到 1.46x、
+    de/tr 由 2.84x 到 1.59x，与三星对照组（1.8~2.2x）及"de/jp 同为打包区"的
+    1.56x 一致；离散度 CV 由 0.92/0.97 降到 0.56/0.23。
+
+    **laborCostAmount == 0 视为"未单列"而非"人工费 0 元"**（哨兵值）：
+    de/jp 全区域 327 行无一例外为 0，若按 0 入库会让前台显示"🔧人工费 0 EUR"，
+    使德国看起来"免人工费"——那是编造，平台不编造。故置 labor_fee=None、
+    has_labor_split=0，前台按"官网未单列人工费，仅给打包价"如实标注。
     """
     rows = []
     for g in groups or []:
@@ -967,7 +982,6 @@ def flatten_reborn_parts(groups):
             part = c.get("partName") or c.get("lv3ClassificationName") or gname
             retail = c.get("retailPrice")
             disc = c.get("discountRetailPrice")
-            eff = retail if retail is not None else disc
             labor = c.get("laborCostAmount")
             cur = c.get("retailPriceCurrency") or ""
 
@@ -977,16 +991,29 @@ def flatten_reborn_parts(groups):
                 # （2026-09-23 实测事故：OPPO 全区域人工费放大 1000 倍）。
                 return _parse_json_amount(v)
 
+            # retailPrice 缺失时退回 discountRetailPrice（与原实现一致）
+            material = _num(retail if retail is not None else disc)
+            labor_n = _num(labor)
+            # 0 / None 都是"未单列"（见函数 docstring 的口径说明）
+            has_split = bool(labor_n)
+            total = (material or 0) + labor_n if has_split else material
+            if has_split:
+                note = (f"官网单列人工费；备件价 {retail} {cur}，"
+                        f"预估总价 = 备件费 + 人工费")
+            elif material is not None and material == 0:
+                note = None
+            else:
+                note = ("官网未单列人工费（laborCostAmount=0），此处为该区打包价"
+                        "（含安装），非裸备件费；不做拆分推算")
             rows.append({
                 "cells": [None, (f"{gname} / " if gname and gname != part else "") + (part or ""),
-                          str(eff)],
-                "price": _num(eff),
+                          str(total)],
+                "price": total,
                 "part": part,
-                "material_fee": _num(retail),
-                "labor_fee": _num(labor),
-                "has_labor_split": 1 if labor is not None else 0,
-                "labor_note": (f"官网单列人工费；备件价 {retail} {cur}，"
-                               f"预估总价 = 备件费 + 人工费") if labor is not None else None,
+                "material_fee": material,
+                "labor_fee": labor_n if has_split else None,
+                "has_labor_split": 1 if has_split else 0,
+                "labor_note": note,
                 "raw": c,
             })
     return rows

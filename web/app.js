@@ -605,14 +605,24 @@
       return html;
     }
     let html = '<div class="panel"><div class="section-title">🧮 同基础机型·跨国比价 — ' +
-      esc(d.brand || "") + ' ' + esc(d.base_model || "") + '（' + (d.quarter || "") + ' · 单元格=CNY；底色=该备件内各国高低）</div>';
+      esc(d.brand || "") + ' ' + esc(d.base_model || "") + '（' + (d.quarter || "") + ' · 单元格 = 官网预估总价(备件费+人工费)的 CNY 折算；底色=该备件内各国高低）</div>';
     const hasNoSplit = (d.groups || []).some(g => (g.parts || []).some(p =>
       Object.values(p.prices || {}).some(pc => pc.has_labor_split !== 1 && pc.material_fee == null && pc.labor_fee == null)));
+    // 打包价：官网未单列人工费，但给了备件费字段（如 OPPO 德国/日本 laborCostAmount 恒为 0）。
+    // 该字段值 = 含安装的打包价，**不是**裸备件费，必须单独标注。
+    const hasBundled = (d.groups || []).some(g => (g.parts || []).some(p =>
+      Object.values(p.prices || {}).some(pc => pc.has_labor_split !== 1 && pc.material_fee != null)));
     const hasSplit = (d.groups || []).some(g => (g.parts || []).some(p =>
       Object.values(p.prices || {}).some(pc => pc.has_labor_split === 1)));
     html += '<div class="hint">同一机型按 <b>(规格, 颜色, 版本)</b> 分组，每组<b>独立</b>跨国比价，<b>不混算</b>不同规格/颜色/版本。上方 chips 可只留单一规格/颜色；下方每组一张表。点击 🔗 可查看官方来源页。</div>';
+    // 口径声明：跨国比价必须同口径，否则「某国打包价 vs 他国裸件价」会造出假价差。
+    // 本平台统一按各官网对客口径「预估价格 = 备件费 + 人工费」折算 CNY。
+    html += '<div class="hint"><b>比价口径</b>：单元格 = 各官网对客的<b>预估总价（备件费 + 人工费）</b>折算 CNY'
+      + '（与本站三星/苹果/小米口径一致）。<b>勿</b>把「含安装的打包价」与「裸备件费」直接对比——'
+      + '那会把廉价件放大成数百上千 % 的假价差。人工费未单列的区域以 ℹ 标注，不做拆分推算。</div>';
     let leg = '<div class="hint warn">';
     if (hasSplit) leg += '🔧 <b>人工费</b>=官网明确单列的人工费金额（<b>当地货币</b>计价，如小米《保外人工指导价》为 CNY），悬停看官网原文说明、🔗证 跳取证页；';
+    if (hasBundled) leg += 'ℹ <b>打包价</b>=该区官网<b>未单列人工费</b>（laborCostAmount=0），报的是<b>含安装的打包价</b>、非裸备件费；平台不做拆分推算；';
     if (hasNoSplit) leg += '※ = 官网<b>仅给总价、未单列人工费</b>（平台显式标注，绝不编造）；';
     leg += '本平台<b>无种子/占位数据</b>：所有价格均来自官方页真实抓取；单元格 tooltip 含汇率来源与时点。</div>';
     html += leg;
@@ -670,6 +680,10 @@
           ? `<br><small class="muted">${esc(p.part)}</small>` : "";
         html += `<tr><td class="rowlabel">${esc(p.cat)}${specTag}${subPart}</td>`;
         let loC = "", hiC = "";
+        // 价差归因标记：极值若来自「打包价区」（官网未单列人工费，如 OPPO 德/日），
+        // 需在最低/最高国旁注明——否则 55~62 EUR 的打包起步价对上他国廉价件，
+        // 会显示成数百上千 % 的价差，看着像脏数据，实为口径差异（2026-09-24）。
+        let loBundled = false, hiBundled = false;
         countries.forEach((c, i) => {
           const v = vals[i];
           if (v == null) {
@@ -683,28 +697,40 @@
           }
           // 参考价不认领"最低国/最高国"（它不是当地官方价，见上方 lo/hi 基准说明）
           if (p.prices[c].is_reference !== 1) {
-            if (v === lo) loC = cn(c);
-            if (v === hi) hiC = cn(c);
+            const _b = (p.prices[c].has_labor_split !== 1 && p.prices[c].material_fee != null);
+            if (v === lo) { loC = cn(c); loBundled = _b; }
+            if (v === hi) { hiC = cn(c); hiBundled = _b; }
           }
           const t = (v - lo) / span;
           const pc = p.prices[c];
           const cur = pc.currency, raw = pc.price;
           // 人工费举证（P1-1）：官网单列→显式金额+原文+取证链接；未单列→显式标注不编造
+          // 三态（2026-09-24 细分）：①单列人工费 ②未单列但有备件费（该区为含安装的打包价，
+          // 如 OPPO 德国/日本：laborCostAmount 恒为 0）③仅有总价（三星/苹果）。
+          // ②③必须区分：②的 material_fee 是打包价而非裸件费，若混同会误导跨国比价。
           let laborBadge = "", laborTip = "";
+          const bundled = (pc.has_labor_split !== 1 && pc.material_fee != null);
           if (pc.has_labor_split === 1) {
             const ln = (pc.labor_note || "官网单列人工费");
             laborBadge = ` <span class="lb labor-ok" title="${esc(ln)}">🔧人工费 ${fmt(pc.labor_fee)} ${esc(cur)}</span>`;
             laborTip = " · " + ln;
             if (pc.labor_source_url)
               laborBadge += ` <a class="srclink" href="${esc(pc.labor_source_url)}" target="_blank" rel="noopener" title="人工费取证来源页" onclick="event.stopPropagation()">🔗证</a>`;
+          } else if (bundled) {
+            const bn = (pc.labor_note || "该区官网未单列人工费，此处为含安装的打包价");
+            laborBadge = ` <span class="lb labor-bundled" title="${esc(bn)}">ℹ打包价</span>`;
+            laborTip = " · " + bn;
           } else {
             laborTip = " · " + (pc.labor_note || "官网未单列人工费，仅提供含人工的总维修价");
           }
           let tip = `${esc(cn(c))} 原币 ${raw} ${cur}（规格 ${esc(pc.spec || "—")} / 颜色 ${esc(pc.color || "—")}${pc.edition ? " / 版本 " + esc(pc.edition) : ""}）`;
-          if (pc.material_fee != null || pc.labor_fee != null)
+          if (pc.has_labor_split === 1)
             // 物料/人工费存的是**原币**金额（与上面的 raw 同币种），不是 CNY ——
             // 历史 bug：这里标成 ¥，把 MYR 339 读成"339 元人民币"。
-            tip += ` · 物料 ${fmt(pc.material_fee)} / 人工 ${fmt(pc.labor_fee)} ${esc(cur)}`;
+            // price 口径 = 备件费 + 人工费，故要写清主数字的构成，避免被当成裸备件费。
+            tip += ` · 主数字口径 = 备件费 + 人工费 = ${fmt(pc.material_fee)} + ${fmt(pc.labor_fee)} ${esc(cur)}`;
+          else if (bundled)
+            tip += ` · 该区官网给的是**含安装的打包价** ${fmt(pc.material_fee)} ${esc(cur)}（laborCostAmount=0，人工费未单列）`;
           else
             tip += ` · 官方未提供物料/人工拆分（仅总价）`;
           tip += laborTip;
@@ -766,7 +792,11 @@
       let labor;
       if (pc.has_labor_split === 1)
         // 物料/人工是**原币**金额（同「原币」列币种），不能标 ¥（那是 CNY 折算列）
-        labor = `🔧人工费 ${fmt(pc.labor_fee)}（物料 ${fmt(pc.material_fee)}）${esc(pc.currency)}`;
+        // 本表「价格」列口径 = 备件费 + 人工费，故须写清构成。
+        labor = `🔧人工费 ${fmt(pc.labor_fee)}（备件费 ${fmt(pc.material_fee)}，合计 ${fmt(pc.price)}）${esc(pc.currency)}`;
+      else if (pc.material_fee != null)
+        // OPPO 德国/日本：laborCostAmount=0 即未单列，此处是含安装的打包价
+        labor = `ℹ打包价 ${fmt(pc.material_fee)} ${esc(pc.currency)}（含安装，人工费未单列）`;
       else
         labor = "官方未单列（仅总价）";
       const srcLink = modelLinkHTML(pc, { showModel: true });
@@ -1130,6 +1160,9 @@
         if (r.has_labor_split === 1)
           labor = `<span class="lb labor-ok" title="${esc(r.labor_note || "")}">🔧 ${fmt(r.labor_fee)} ${esc(r.currency)}</span>` +
             (r.labor_source_url ? ` <a class="srclink" href="${esc(r.labor_source_url)}" target="_blank" rel="noopener" title="人工费取证页">🔗证</a>` : "");
+        else if (r.material_fee != null)
+          // 打包价（OPPO 德国/日本 laborCostAmount=0）：字段值是含安装的打包价，非裸备件费
+          labor = '<span class="lb labor-bundled" title="' + esc(r.labor_note || "该区官网未单列人工费，此为含安装的打包价") + '">ℹ打包价</span>';
         else
           labor = '<span class="muted" title="' + esc(r.labor_note || "官网未单列人工费") + '">未单列</span>';
         const seed = (r.is_seed === 1) ? ' <sup class="seed" title="演示/种子数据">seed</sup>' : "";

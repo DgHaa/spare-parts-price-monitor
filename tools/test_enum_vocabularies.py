@@ -369,6 +369,48 @@ def main() -> int:
           {_run.MODEL_URL_KIND_API, _run.MODEL_URL_KIND_PAGE,
            _run.MODEL_URL_KIND_BRAND_ENTRY} <= set(db.VALID_SNAPSHOT_URL_KINDS), True)
 
+    # [9] 价格口径守卫（2026-09-24）：price 必须 = 备件费 + 人工费
+    #     背景：OPPO 各区报价风格不同——de/jp 的 laborCostAmount 恒为 0（retailPrice
+    #     即含安装的打包价），mx/tr/ae/my 单列人工费。只取 retailPrice 会拿德国的
+    #     打包价去比他国的裸件价，把廉价件放大成 +1225% 的假价差。
+    #     硬约束品牌见 V.CALIBER_STRICT_BRANDS，故这里造一个 oppo 品牌来测。
+    print("\n[9] 价格口径守卫（price = 备件费 + 人工费）")
+    obid = db.upsert_brand("oppo", recipe_mode="api_reborn")
+    omid = db.upsert_model(obid, "mx", "__caliber__")
+    opid = db.upsert_part(omid, "屏幕组件")
+    con.execute("""
+        INSERT INTO price_snapshots (part_id, quarter, price, currency, cny_price,
+                                     material_fee, labor_fee, has_labor_split, source_url)
+        VALUES (?, '2026Q3', 100.0, 'MXN', 38.8, 100.0, 50.0, 1, 'x')
+    """, (opid,))
+    con.commit()
+    rep9 = V.Report()
+    V.check_price_caliber(con, rep9)
+    check("口径违例被抓到（ERROR）",
+          any(c == "CALIBER_MISMATCH" for _s, c, _m in rep9.rows), True)
+    check("  并给出后果与修复指引",
+          any("假价差" in m for _s, c, m in rep9.rows if c == "CALIBER_MISMATCH"), True)
+
+    con.execute("UPDATE price_snapshots SET price=150.0, cny_price=58.2 WHERE part_id=?",
+                (opid,))
+    con.commit()
+    rep9b = V.Report()
+    V.check_price_caliber(con, rep9b)
+    check("修正为 备件费+人工费 后通过",
+          any(c == "CALIBER_MISMATCH" for _s, c, _m in rep9b.rows), False)
+    check("  且出具 CALIBER 通过信号",
+          any(c == "CALIBER" for _s, c, _m in rep9b.rows), True)
+
+    # 哨兵值：labor_fee=NULL + material_fee 非空（打包价区）必须视为合法，
+    # 否则 de/jp 的 327 行会被误判成 ERROR。
+    con.execute("UPDATE price_snapshots SET price=88.0, material_fee=88.0, labor_fee=NULL,"
+                " has_labor_split=0 WHERE part_id=?", (opid,))
+    con.commit()
+    rep9c = V.Report()
+    V.check_price_caliber(con, rep9c)
+    check("打包价行（labor=NULL，price==material）不误报",
+          any(c == "CALIBER_MISMATCH" for _s, c, _m in rep9c.rows), False)
+
     con.close()
     shutil.rmtree(tmp.parent, ignore_errors=True)
 

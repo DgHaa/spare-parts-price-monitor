@@ -68,6 +68,41 @@ def count_invalid(con):
     return total, detail
 
 
+def caliber_stats(con, brand=None):
+    """价格口径校验：price 是否 = 备件费 + 人工费（labor 缺失按 0）。
+
+    返回 (违例行数, 明细文案)。这是 2026-09-24 新增的口径约束的动态验证——
+    静态看代码只能证明"解析函数写对了"，证明不了"真实链路落库后确实是对的口径"。
+
+    另返回该品牌的结构分布，便于判断走的是哪种报价风格：
+      split   —— 官网单列人工费（price = 备件费 + 人工费，labor_fee 非空且 >0）
+      bundled —— 官网未单列人工（laborCostAmount=0，price 即含安装的打包价）
+    """
+    where = "WHERE ps.material_fee IS NOT NULL"
+    args = []
+    if brand:
+        where += " AND b.name=?"
+        args.append(brand)
+    bad = con.execute(f"""
+        SELECT COUNT(*) FROM price_snapshots ps
+        JOIN parts p ON p.id=ps.part_id JOIN models m ON m.id=p.model_id
+        JOIN brands b ON b.id=m.brand_id {where}
+          AND ABS(ps.price - (ps.material_fee + COALESCE(ps.labor_fee, 0))) > 0.005
+    """, args).fetchone()[0]
+    dist = {}
+    for r in con.execute(f"""
+        SELECT b.name, m.country_code cc,
+               SUM(CASE WHEN ps.labor_fee > 0 THEN 1 ELSE 0 END) split,
+               SUM(CASE WHEN COALESCE(ps.labor_fee, 0) = 0 THEN 1 ELSE 0 END) bundled
+        FROM price_snapshots ps
+        JOIN parts p ON p.id=ps.part_id JOIN models m ON m.id=p.model_id
+        JOIN brands b ON b.id=m.brand_id {where}
+        GROUP BY 1, 2 ORDER BY 1, 2
+    """, args):
+        dist[(r[0], r[1])] = (r[2] or 0, r[3] or 0)
+    return bad, dist
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--brand", default="oppo")
@@ -154,6 +189,12 @@ def main() -> int:
     con = sqlite3.connect(str(tmp_db))
     total, detail = count_invalid(con)
     print(f"\n枚举非法值合计：{total}" + (f" → {detail}" if detail else "（全 0）"))
+    bad, dist = caliber_stats(con, args.brand)
+    print(f"\n价格口径违例（price ≠ 备件费+人工费）：{bad}"
+          + ("（OK）" if bad == 0 else " ← 需修"))
+    for (bn, cc), (sp, bu) in sorted(dist.items()):
+        tag = "单列人工费" if sp else ("打包价(未单列)" if bu else "无拆分")
+        print(f"   {bn:<8}{cc:<4} 单列={sp:<5} 未单列={bu:<5} → {tag}")
     # 同时核对**生产库确实没被动过**（这是本脚本最重要的安全声明，必须每次自证）
     prod_n = sqlite3.connect(str(src_db)).execute(
         "SELECT COUNT(*) FROM price_snapshots").fetchone()[0]
@@ -166,8 +207,28 @@ def main() -> int:
 
     # 关键判据：**写入口断言有没有误伤**。若断言误伤，run_all 会抛含"非法"的 ValueError。
     # --fresh 模式下还要求净增 > 0：否则"没报错"可能只是"根本没走到写入"。
+    #
+    # 例外（2026-09-24 修）：**本次一行都没写、且无任何断言异常**时，不判 FAIL 而判 SKIP。
+    # 起因：oppo/de 某次实测 196 台全部 partPriceList 为空（上游端点当刻返回空，非护栏问题），
+    # 脚本却报 FAIL —— 与"护栏误伤生产"这个致命信号混在一起，会误导排查方向。
+    # 判据用 run_logs 的状态：failed 才算异常，success/partial/resumed/unavailable 视为"官方无数据"。
     assert_err = err and "非法" in err
-    ok = (total == 0) and (not assert_err) and (after[0] >= before[0])
+    run_status = None
+    try:
+        _c = sqlite3.connect(str(tmp_db))
+        _r = _c.execute("SELECT status FROM run_logs WHERE brand=? AND country=? "
+                        "ORDER BY id DESC LIMIT 1", (args.brand, args.country)).fetchone()
+        run_status = _r[0] if _r else None
+        _c.close()
+    except sqlite3.OperationalError:
+        pass
+    wrote_any = (after[0] > before[0]) or bool(wrote)
+    if not assert_err and not wrote_any and run_status not in (db.STATUS_FAILED,):
+        print(f"\n结论：SKIP —— 本次未取到任何数据（run_logs.status={run_status}），"
+              f"属上游『官方无备件价/端点当刻返空』，**不是**护栏误伤 ✓")
+        return 0
+
+    ok = (total == 0) and (not assert_err) and (after[0] >= before[0]) and (bad == 0)
     if args.fresh:
         ok = ok and (after[0] > before[0])
     print("\n结论：" + ("PASS —— 通用路径未被写入口断言误伤 ✓" if ok
